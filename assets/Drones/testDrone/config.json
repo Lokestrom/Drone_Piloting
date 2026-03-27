@@ -1,0 +1,35 @@
+{
+  "name": "Test Drone",
+  "description": "A basic test drone for development purposes.",
+  "model": "testDrone.obj",
+
+  "modelScale": [1E-2, 1E-2, 1E-2],
+  "modelRotation": [-90, 0,0],
+  "modelColor":  [1,1,0,1],
+  //can look at creating a "components" section that defines the various parts of the drone, 
+  //and then the "engines" section can reference those components by name. 
+  //For now, we'll just define the engines directly in the "engines" section.
+
+  "engines": [
+    {
+      "type": "rotor",
+      "position": [ 1, 1, 0 ],
+      "max_thrust": 10
+    },
+    {
+      "type": "rotor",
+      "position": [ 1, -1, 0 ],
+      "max_thrust": 10
+    },
+    {
+      "type": "rotor",
+      "position": [ -1, 1, 0 ],
+      "max_thrust": 10
+    },
+    {
+      "type": "rotor",
+      "position": [ -1, -1, 0 ],
+      "max_thrust": 10
+    }
+  ]
+}

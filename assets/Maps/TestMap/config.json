@@ -1,0 +1,25 @@
+{
+  "name": "Test map",
+  "description": "This is a map used for testing",
+
+  "lightSource": [ 0, -1, 0 ],
+
+  "objects": [
+    {
+      "model": "cube.obj",
+      "position": [ 1, 1, 1 ],
+      "modelColor":  [0, 0, 1, 1]
+    },
+    {
+      "model": "cube.obj",
+      "position": [ -1, -1, -1 ],
+      "modelColor": [1,0,0,1]
+    },
+    {
+      "model": "cube.obj",
+      "position": [ 0, -10, 0 ],
+      "modelScale": [ 100, 0.1, 100 ],
+      "modelColor": [ 0.3, 0.7, 0.3, 1 ]
+    }
+  ]
+}

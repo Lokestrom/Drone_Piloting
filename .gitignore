@@ -1,0 +1,10 @@
+# build folder
+/out
+/build
+
+#cmake
+/CMakePresets.json
+
+#IDE
+/.vs
+/.vscode
