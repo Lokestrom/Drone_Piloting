@@ -9,16 +9,20 @@
 
 namespace gui {
 void App::startup() {
+	enabled = false;
 }
 void App::generateWindows() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
+	
+	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-	for (auto& window : windows) {
-		if (window->isOpen())
-			window->render();
-	}
+	if (enabled)
+		for (auto& window : windows) {
+			if (window->isOpen())
+				window->render();
+		}
 
 	ImGui::Render();
 }

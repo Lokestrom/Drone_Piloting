@@ -59,7 +59,7 @@ void Map::load(std::filesystem::path folderPath) {
 
 		sceneryIDs.push_back(
 			vulkan::GameObjectContainer::Add(vulkan::GameObject{
-				.model = vulkan::Model3D(folderPath / obj["model"], modelTransform),
+				.model = vulkan::ModelCache::loadModel(folderPath / obj["model"], modelTransform),
 				.position = glm::vec3(obj["position"][0], obj["position"][1], obj["position"][2]),
 				.orientation = glm::quat() }));
 	}

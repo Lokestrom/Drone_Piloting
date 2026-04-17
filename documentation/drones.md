@@ -1,0 +1,70 @@
+# Drones
+
+## Flying
+One can fly the drone using W, A, S, D, left shift, and space. <br>
+See Future plans section at the bottom for plans on adding more input options.
+
+## Custom drones
+This is where the real fun starts, you can create your own drones by following these instructions. <br>
+Note that the code uses SI units, so make sure to scale your models accordingly. <br>
+
+Create a folder in `assets/drones` that must contain:
+* `config.json`: The properties of the drone, such as mass, max thrust, etc.
+* `model.obj`: The 3D model of the drone, must be a Wavefront .obj file.
+* `Debug/control.dll/so`: The control code for the drone, this is a dynamic library that contains the logic for controlling the drone.
+
+Optionally you can add a README.md file or any other useful files to the folder. <br>
+
+
+
+### Config.json
+The `config.json` file contains the properties of the drone, these include:
+* `name`: The name of the drone, this is used for display purposes and to identify the drone.
+* `description`: A short description of the drone, this is used for display purposes.
+* `model`: A custom path to the model, if not specified it will default to `model.obj` in the same folder.
+* `mass`: The mass of the drone, this is used for physics calculations.
+* `inertiaTensor`: The inertia tensor of the drone, this is used for physics calculations.
+* `modelScale`: The scale of the model, this is used for rendering.
+* `modelRotation`: The rotation of the model, this is used for rendering.
+* `modelColor`: The color of the model, this is used for rendering.
+* `engines`: An array of engines, each engine has the following properties:
+  * `id`: The id of the engine, this is used to identify the engine in the control code.
+  * `position`: The position of the engine relative to the center of mass, this is used for physics calculations.
+  * `maxThrust`: The maximum thrust produced by the engine, this is used for error checking user code.
+
+
+### Control code
+The control code for the drone is a dynamic library (`.dll` on Windows, `.so` on Linux) that contains the logic for controlling the drone. 
+All definitions and structures needed for the control code are defined in `src/DroneAPI.h`, looking at the definitions in here is probably the best way to understand how the data is structured. <br>
+
+This library must implement a function with the following signature:
+```cpp
+DRONE_API void update(
+	const UserInput* input,
+	const DroneState* state,
+	CommandBuffer* outCommands)
+```
+This function is called every frame and is responsible for updating the drone's state based on 
+the user input and the current state of the drone.
+#### Parameters:
+* `input`: A pointer to a `UserInput` structure that contains the current state of the user input (which keys are pressed, etc.).
+* `state`: A pointer to a `DroneState` structure that contains the current state of the drone.
+* `outCommands`: A pointer to a `CommandBuffer` structure where the function should write the commands for the drone.
+
+#### Output:
+The function should write the commands for the drone to the `outCommands` buffer.
+
+The best way of understating how to write the control code is to look at the example drones in `assets/drones/*/src`,
+Here is some example code and a CMkeLists.txt that structures everything for you, Debug and Release folders with the dynamic library.
+When running in the respective configurations the software uses the correct library, there is no error checking so the program will crach
+silently and this can be a reason why.
+
+## Future plans
+
+#### Input
+Currently only W, A, S, D, left shift, and space are supported for user input, 
+but in the future I plan to make it more flexible and even support other types of input.
+
+#### Backward compatibility
+I don't plan on keeping any backward compatibility. 
+At some point i may begin adding a change log and deprecation warnings.

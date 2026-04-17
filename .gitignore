@@ -2,9 +2,15 @@
 /out
 /build
 
-#cmake
+# cmake
 /CMakePresets.json
 
-#IDE
+# IDE
 /.vs
 /.vscode
+
+# Assets
+/assets/Drones/*/build
+/assets/Drones/*/Debug
+/assets/Drones/*/Release
+/assets/Drones/*/modelData

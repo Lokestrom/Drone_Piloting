@@ -21,7 +21,7 @@ public:
 		requires std::is_base_of_v<ImGuiWindow, T>
 	static void addWindow();
 	
-	static inline bool active;
+	static inline bool enabled;
 private:
 	static inline std::vector<std::unique_ptr<ImGuiWindow>> windows;
 };

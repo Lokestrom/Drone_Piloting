@@ -1,0 +1,74 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{amssymb}
+
+\setlength{\parindent}{0pt}
+
+\title{Mathematics for Drone Piloting} 
+
+\begin{document}
+	\maketitle
+	This document describes the mathematical model used for rigid body dynamics
+	in the drone piloting simulation.
+
+    \section{Rigid body}
+	\subsection*{Definitions:}
+	\begin{tabbing}
+		\hspace{1cm}\= \kill
+		\> \( M \) is the mass of the rigid body. \\
+        \> \( P \) is the position of the rigid body. \\
+        \> \( v \) is the velocity of the rigid body. \\
+        \> \( a \) is the acceleration of the rigid body. \\
+		\> \( O_M \) is the center of mass of the rigid body in body frame. \\
+		\> \( I \) is the inertia tensor of the rigid body about its center of mass. \\
+		\> \( L \) is the angular momentum of the rigid body. \\
+        \> \( q \) is the orientation of the rigid body, represented as a quaternion. \\
+		\> \( \tau \) is the torque applied to the rigid body. \\
+        \> \( F_S \) is the sum of the forces applied to the rigid body in body frame. \\
+        \> \( F_{DS} \) is the sum of the force displacement from \( O_M \). \\
+	\end{tabbing}
+    The subscript \( B \) denotes that the variable is expressed in the body frame.
+
+    \subsection*{Variable Initialization:}
+    From the drone configuration file:
+    \begin{tabbing}
+        \hspace{1cm}\= \kill
+        \> \( M \) is defined as the mass of the drone. \\
+        \> \( I_B \) is defined as the inertia tensor of the drone. \\
+        \> \( O_M \) is defined as the center of mass of the drone. \\
+    \end{tabbing}
+    Note: Other variables in the JSON configuration file have no effect on the math, 
+    as they are only used for visualization and other purposes even the motor properties, 
+    as they are used to calculate the forces applied to the drone, which is represented by \( F_S \) and \( F_{DS} \). \\
+
+    Then the rest of the variables will be initialized too zero, as the drone starts at rest.
+    Or they may be affected by the map configuration file or other factors like swapping the drone mid flight.
+    This covers all the variables initialized state. 
+    The next step is to define how these variables are updated during the simulation. 
+    But before that it is important to note that the sum of forces \( F_S \) 
+    and the sum of force displacement \( F_{DS} \) is the basis for all the other variables.
+    It will be updated based on the inputs of users and the physics of the environment.
+    That again comes from the drone control script and the map configuration file.
+
+    \subsection*{Equations of motion:}
+    The equations of motion for the rigid body are given by:
+    \begin{align*}
+        \dot{P} &= v \\
+        \dot{v} &= \frac{F_S \cdot |F_{DS}|}{M} \\
+        \dot{q} &= \Omega(\omega) \\
+        \dot{L} &= \tau_B \\
+        \omega &= I^{-1} L \\
+        \tau &= F_S \times F_{DS}
+    \end{align*}
+    where:
+	\begin{tabbing}
+		\hspace{1cm}\= \kill
+		\> \( \Omega(\omega) \) is a axis quaternion \((||\omega||, |\omega|)\)
+	\end{tabbing}
+
+    \section{References}
+    This math is based on the more in-depth document in the rocket simulation project, 
+    available at the following link:
+	\url{https://github.com/Lokestrom/rocketSim-code/blob/main/math.pdf}
+\end{document}

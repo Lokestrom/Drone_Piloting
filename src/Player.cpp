@@ -3,7 +3,7 @@
 Player::Player() noexcept
 	: _camera()
 	, _drone()
-, freeCAM(false) {
+{
 	_camera.getPositionRef() = glm::vec3(0, 2, -5);
 	_camera.updateViewMatrix();
 }
@@ -25,7 +25,7 @@ void Player::releaseDrone() {
 }
 
 vulkan::UniformBufferObject Player::getUBO() const noexcept {
-	if (!_drone.has_value() || freeCAM) {
+	if (!_drone.has_value()) {
 		return {
 			.proj = _camera.getProjection(),
 			.view = _camera.getView(),
@@ -33,10 +33,17 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 			.lightSource = glm::vec4()
 		};
 	}
+	
+	if (_camera.getState() == Camera::State::FreeCAM)
+		return {
+			.proj = _camera.getProjection(),
+			.view = _camera.getView(),
+			.cameraPos = glm::vec4(_camera.getPosition(), 0.0),
+			.lightSource = glm::vec4()
+		};
 
 	glm::vec3 cameraPosition = _camera.getPosition() * glm::conjugate(_drone->getOrientation()) + _drone->getPosition();
 	glm::quat cameraOrientation = glm::quatLookAt(glm::normalize(_camera.getPosition() * glm::conjugate(_drone->getOrientation())), { 0, -1, 0 });
-	
 	return {
 		.proj = _camera.getProjection(),
 		.view = getViewMatrix(cameraPosition, cameraOrientation),
@@ -46,12 +53,12 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 }
 
 void Player::update() {
-	if (ImGui::IsKeyPressed(ImGuiKey_R))
-		freeCAM = !freeCAM;
-	if (ImGui::IsKeyPressed(ImGuiKey_C))
-		_camera.toggleMovementUpdating(!_camera.movementEnabled());
+	if (ImGui::IsKeyPressed(ImGuiKey_F))
+		_camera.setState(Camera::State::FreeCAM);
+	if (ImGui::IsKeyPressed(ImGuiKey_T))
+		_camera.setState(Camera::State::LookAt);
 
 	_camera.update();
-	if (!_camera.movementEnabled() && !freeCAM)
+	if (_drone.has_value())
 		_drone->update();
 }

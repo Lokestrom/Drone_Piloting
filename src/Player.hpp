@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Drone.hpp"
 #include "rendering/Camera.hpp"
 #include "rendering/Renderer.hpp"
@@ -29,5 +31,5 @@ public:
 private:
 	std::optional<Drone> _drone;
 	Camera _camera;
-	bool freeCAM; // it the future this is when _drone does not have value
+	Error err;
 };

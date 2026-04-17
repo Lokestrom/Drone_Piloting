@@ -1,6 +1,6 @@
 {
-  "name": "Test Drone",
-  "description": "A basic test drone for development purposes.",
+  "name": "Default Drone",
+  "description": "A basic hexacopter drone",
   "model": "model.obj",
 
   "mass": 1,
@@ -11,32 +11,44 @@
   ],
 
   "modelScale": [ 1E-3, 1E-3, 1E-3 ],
-  "modelRotation": [ -90, -180, 0 ],
+  "modelRotation": [ -90, 0, 0 ],
   "modelColor": [ 1, 1, 0, 1 ],
 
   "engines": [
     {
       "id": 0,
       "type": "rotor",
-      "position": [ 0.707, 0, 0.707 ],
+      "position": [ 0.255, 0, 0.44167 ],
       "maxThrust": 100
     },
     {
       "id": 1,
       "type": "rotor",
-      "position": [ 0.707, 0, -0.707 ],
+      "position": [ 0.51, 0, 0 ],
       "maxThrust": 100
     },
     {
       "id": 2,
       "type": "rotor",
-      "position": [ -0.707, 0, 0.707 ],
+      "position": [ 0.255, 0, -0.44167 ],
       "maxThrust": 100
     },
     {
       "id": 3,
       "type": "rotor",
-      "position": [ -0.707, 0, -0.707 ],
+      "position": [ -0.255, 0, -0.44167 ],
+      "maxThrust": 100
+    },
+    {
+      "id": 4,
+      "type": "rotor",
+      "position": [ -0.51, 0, 0 ],
+      "maxThrust": 100
+    },
+    {
+      "id": 5,
+      "type": "rotor",
+      "position": [ -0.255, 0, 0.44167 ],
       "maxThrust": 100
     }
   ]

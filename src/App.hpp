@@ -31,6 +31,17 @@ public:
 		return ubo;
 	}
 
+	static void swapDrone(std::filesystem::path folderPath) { player.SwapDrone(folderPath); }
+
+	struct RenderVector {
+		glm::vec3 position;
+		glm::vec3 dir;
+		glm::vec4 color = glm::vec4(1, 0, 0, 1);
+	};
+
+	static inline std::vector<RenderVector> renderVectors;
+	static inline glm::vec2 vectorScale;
+
 private:
 	static void render();
 

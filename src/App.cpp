@@ -1,6 +1,8 @@
 #include "App.hpp"
 
 #include "windows/infoWindow.hpp"
+#include "windows/DroneSelect.hpp"
+#include "windows/settingsWindow.hpp"
 
 static void glfw_error_callback(int error, const char* description) {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -9,6 +11,7 @@ static void glfw_error_callback(int error, const char* description) {
 static void check_vk_result(VkResult err) {
 	if (err == VK_SUCCESS)
 		return;
+	__debugbreak();
 	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
 	if (err < 0)
 		abort();
@@ -16,6 +19,7 @@ static void check_vk_result(VkResult err) {
 static void check_vk_result(vk::Result err) {
 	if (err == vk::Result::eSuccess)
 		return;
+	__debugbreak();
 	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
 	if (err < vk::Result::eSuccess)
 		abort();
@@ -27,7 +31,7 @@ void App::startup() {
 		throw std::runtime_error("GLFW initialization failed");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+Vulkan example", nullptr, nullptr);
+	window = glfwCreateWindow(1280, 720, "Drone piloting", nullptr, nullptr);
 	if (!glfwVulkanSupported())
 		throw std::runtime_error("No vulkan support");
 
@@ -85,7 +89,11 @@ void App::startup() {
 
 	player.SwapDrone(ASSET_DIR "drones/testDrone");
 	map.load(ASSET_DIR "Maps/TestMap");
+	vectorScale = glm::vec2(0.3, 0.1);
+	gui::App::startup();
 	gui::App::addWindow<InfoWindow>();
+	gui::App::addWindow<DroneSelectWindow>();
+	gui::App::addWindow<SettingsWindow>();
 }
 
 void App::shutdown() {
@@ -112,19 +120,25 @@ void App::shutdown() {
 	glfwTerminate();
 }
 
+#include "Input/InputEventHandler.hpp"
+
 void App::run() {
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	ImGuiIO& io = ImGui::GetIO();
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
+		renderVectors.clear();
 
-		int fb_width, fb_height;
-		glfwGetFramebufferSize(window, &fb_width, &fb_height);
-		if (fb_width > 0 && fb_height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != fb_width || vulkan::App::mainWindowData.Height != fb_height)) {
+		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+			gui::App::enabled = !gui::App::enabled;
+
+		glfwGetFramebufferSize(window, &width, &height);
+		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) {
 			ImGui_ImplVulkan_SetMinImageCount(vulkan::App::minImageCount);
 			ImGui_ImplVulkanH_CreateOrResizeWindow(vulkan::App::instance, vulkan::App::physicalDevice, vulkan::App::device,
-				&vulkan::App::mainWindowData, vulkan::App::queueFamily, nullptr, fb_width, fb_height, vulkan::App::minImageCount);
+				&vulkan::App::mainWindowData, vulkan::App::queueFamily, nullptr, width, height, vulkan::App::minImageCount);
+			vulkan::App::rebuild();
 			vulkan::App::mainWindowData.FrameIndex = 0;
 			vulkan::App::swapChainRebuild = false;
 		}
@@ -138,6 +152,8 @@ void App::run() {
 		player.update();
 
 		render();
+
+		InputEventHandler::reset();
 	}
 }
 
@@ -152,12 +168,14 @@ void App::render() {
 		auto UBO = getUBO();
 		vulkan::App::render(UBO);
 		gui::App::render(wd);
+
+		vulkan::App::endMainFrame(wd);
 	}
+	
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 	}
-
 	if (!mainMinimized) {
 		vulkan::App::endFrame(wd);
 	}

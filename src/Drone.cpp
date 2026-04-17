@@ -1,44 +1,46 @@
 #include "Drone.hpp"
 
 #include <fstream>
+#include <iostream>
+
 #include <json.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include "App.hpp"
 #include "Settings.hpp"
+#include "importJSONData.hpp"
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 using Json = nlohmann::json;
 
-static glm::vec3 getVec3(const Json& jsonObj) {
-	return glm::vec3(jsonObj[0], jsonObj[1], jsonObj[2]);
-}
-static glm::quat getQuat(const Json& jsonObj) {
-	return glm::quat(glm::vec3(
-		glm::radians(static_cast<float>(jsonObj[0])),
-		glm::radians(static_cast<float>(jsonObj[1])),
-		glm::radians(static_cast<float>(jsonObj[2]))
-	));
-}
+struct droneControls {
+	static const ImGuiKey moveForward = ImGuiKey_W,
+						  moveBackward = ImGuiKey_S,
+						  moveLeft = ImGuiKey_A,
+						  moveRight = ImGuiKey_D,
+						  moveUp = ImGuiKey_Space,
+						  moveDown = ImGuiKey_LeftShift;
+};
 
-static glm::vec4 getVec4(const Json& jsonObj) {
-	return glm::vec4{
-		jsonObj[0],
-		jsonObj[1],
-		jsonObj[2],
-		jsonObj[3],
-	};
-}
-
-Drone::Drone(std::filesystem::path folderPath) 
-	: _mass(1) {
-
+Drone::Drone(std::filesystem::path folderPath)
+	: _angularMomentum(0.0f)
+	, _velocity(0.0f)
+	{
 	std::ifstream file(folderPath / "config.json");
 	assert(file && "Cant open config, callers responsibility to check");
 
 	Json jsonData = Json::parse(file, nullptr, true, true);
 
-	vulkan::Model3D::CreationTransform modelTransform {
+	//TODO: should check for if the fields are of the correct type
+	_mass = jsonData["mass"];
+	_invInertia_B = glm::inverse(getMat3(jsonData["inertiaTensor"]));
+
+	vulkan::Model3D::CreationTransform modelTransform{
 		.position = jsonData.contains("modelPosition")
 						? getVec3(jsonData["modelPosition"])
 						: glm::vec3(),
@@ -54,12 +56,28 @@ Drone::Drone(std::filesystem::path folderPath)
 	};
 
 	vulkan::GameObject obj{
-		.model = vulkan::Model3D(folderPath / jsonData["model"], modelTransform),
+		.model = vulkan::ModelCache::loadModel(folderPath / jsonData["model"], modelTransform),
 		.position = glm::vec3(0.0),
 		.orientation = glm::quat(1, 0, 0, 0)
 	};
 
 	objectID = vulkan::GameObjectContainer::Add(std::move(obj));
+
+	for (const auto& engineData : jsonData["engines"]) {
+		Engines engine{
+			.id = engineData["id"],
+			.maxThrust = engineData["maxThrust"],
+			.position = getVec3(engineData["position"]),
+			.direction = glm::vec3(0,1,0)
+		};
+		_engines[engine.id] = engine;
+	}
+#ifdef _DEBUG
+	_plugin.lib = SharedLib(folderPath / "Debug/control");
+#else
+	_plugin.lib = SharedLib(folderPath / "Release/control");
+#endif
+	_plugin.update = reinterpret_cast<UpdateFn>(_plugin.lib.getFunction("update"));
 }
 
 Drone::~Drone() noexcept {
@@ -78,61 +96,97 @@ static glm::quat getStepQuaternion(const glm::quat& orientation, const glm::quat
 	return step;
 }
 
+static bool isnan(const glm::quat& q) noexcept {
+	return std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z) || std::isnan(q.w);
+}
+
+static bool isnan(const glm::vec3& v) noexcept {
+	return std::isnan(v.x) || std::isnan(v.y) || std::isnan(v.z);
+}
+
 void Drone::update() {
+	//TODO: make this shit cleaner and physically correct
 	auto& obj = vulkan::GameObjectContainer::get(objectID);
 
-	glm::vec3 forces = glm::vec3(0.0, -10.0, 0.0);
+	glm::mat3 R = glm::mat3_cast(getOrientation());
+	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
+	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
 
-	glm::vec3 forwardDir = glm::rotate(vulkan::GameObjectContainer::get(objectID).orientation, glm::vec3(0.0, 0.0, 1.0));
-	glm::vec3 rightDir = glm::rotate(vulkan::GameObjectContainer::get(objectID).orientation, glm::vec3(1.0, 0.0, 0.0));
-	glm::vec3 upDir = glm::rotate(vulkan::GameObjectContainer::get(objectID).orientation, glm::vec3(0.0, 1.0, 0.0));
+	UserInput input{
+		.keyW = ImGui::IsKeyDown(droneControls::moveForward),
+		.keyS = ImGui::IsKeyDown(droneControls::moveBackward),
+		.keyA = ImGui::IsKeyDown(droneControls::moveLeft),
+		.keyD = ImGui::IsKeyDown(droneControls::moveRight),
+		.keySpace = ImGui::IsKeyDown(droneControls::moveUp),
+		.keyShift = ImGui::IsKeyDown(droneControls::moveDown)
+	};
+	DroneState state{
+		.position = { obj.position.x, obj.position.y, obj.position.z },
+		.velocity = { _velocity.x, _velocity.y, _velocity.z },
+		.orientation = { obj.orientation.w, obj.orientation.x, obj.orientation.y, obj.orientation.z },
+		.angularVelocity = { angularVelocity.x, angularVelocity.y, angularVelocity.z }
+	};
+	CommandBuffer commands{
+		.commands = nullptr,
+		.count = 0
+	};
 
-	glm::vec3 moveDir{ 0.0 };
-	moveDir += (float)ImGui::IsKeyDown(settings::moveForward) * forwardDir;
-	moveDir -= (float)ImGui::IsKeyDown(settings::moveBackwards) * forwardDir;
-	moveDir += (float)ImGui::IsKeyDown(settings::moveLeft) * rightDir;
-	moveDir -= (float)ImGui::IsKeyDown(settings::moveRight) * rightDir;
-	moveDir += (float)ImGui::IsKeyDown(settings::moveUp) * upDir;
-	moveDir -= (float)ImGui::IsKeyDown(settings::moveDown) * upDir;
+	_plugin.update(&input, &state, &commands);
 
-	if (moveDir != glm::vec3(0.0)) {
-		forces += 20.0f * glm::normalize(moveDir);
+	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0, -10.0, 0.0));
+	glm::vec3 torque = glm::vec3(0.0, 0.0, 0.0);
+
+	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces), glm::vec4(0, 1, 0, 1) });
+	for (int i = 0; i < commands.count; ++i) {
+		const auto& command = commands.commands[i];
+		if (_engines.find(command.engineId) == _engines.end()) {
+			std::cerr << "Invalid engine ID: " << command.engineId << std::endl;
+			continue;
+		}
+		if (std::abs(command.thrust) > _engines[command.engineId].maxThrust) {
+			std::cerr << "Thrust value " << command.thrust << " exceeds max thrust for engine " << command.engineId << std::endl;
+			continue;
+		}
+		forces += _engines[command.engineId].direction * command.thrust;
+		torque += glm::cross(_engines[command.engineId].position, _engines[command.engineId].direction * command.thrust);
+
+		::App::renderVectors.push_back({ 
+			glm::rotate(getOrientation(), _engines[command.engineId].position) + obj.position, 
+			glm::rotate(getOrientation(), _engines[command.engineId].direction * command.thrust) 
+		});
 	}
-
-	//resistance
-	forces += (glm::length(_velocity) / 10) * -_velocity;
-
+	
+	forces = glm::rotate(getOrientation(), forces);
+	forces -= (glm::length(_velocity) * _velocity) / 10.0f; // resistance
+	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f, glm::vec4(0, 0, 1, 1) });
 
 	obj.position += _velocity * (float)App::getDeltaTime();
 	_velocity += (forces / _mass) * (float)App::getDeltaTime();
 
-	//faking the colition with the grownd
-	if (obj.position.y < -10) {
+	_angularMomentum += torque * (float)App::getDeltaTime();
+	_angularMomentum -= (glm::length(_angularMomentum) * _angularMomentum) / 10.0f; // angular resistance
+
+	angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
+
+	float angle = glm::length(angularVelocity) * (float)App::getDeltaTime();
+	if (angle > 1e-6f) {
+		glm::vec3 axis = glm::normalize(angularVelocity);
+
+		glm::quat dq = glm::angleAxis(angle, axis);
+
+		glm::quat newOrientation = glm::normalize(dq * getOrientation());
+
+		if (glm::dot(newOrientation, getOrientation()) < 0.0f)
+			newOrientation = -newOrientation;
+
+		getOrientation() = newOrientation;
+	}
+
+	// faking the collision with the ground
+	if (obj.position.y < -10 && _velocity.y < 0) {
 		obj.position.y = -10;
 		_velocity.y = 0;
 	}
-
-	/*glm::vec3 rotation{ 0.0 };
-	glm::vec3 upRotate = glm::vec3(1.0, 0.0, 0.0);
-	glm::vec3 rightRotate = glm::vec3(0.0, 1.0, 0.0);
-	glm::vec3 rollRotate = glm::vec3(0.0, 0.0, 1.0);
-
-	rotation += (float)ImGui::IsKeyDown(settings::rotateRight) * rightRotate;
-	rotation -= (float)ImGui::IsKeyDown(settings::rotateLeft) * rightRotate;
-	rotation += (float)ImGui::IsKeyDown(settings::rotateUp) * upRotate;
-	rotation -= (float)ImGui::IsKeyDown(settings::rotateDown) * upRotate;
-	rotation += (float)ImGui::IsKeyDown(settings::rollLeft) * rollRotate;
-	rotation -= (float)ImGui::IsKeyDown(settings::rollRight) * rollRotate;
-
-	float angle = glm::length(rotation) * App::getDeltaTime();
-	if (angle < 1e-6f)
-		return;
-
-	glm::vec3 axis = glm::normalize(rotation);
-
-	glm::quat dq = glm::angleAxis(angle, axis);
-
-	getOrientation() = glm::normalize(getOrientation() * dq);*/
 }
 
 glm::vec3& Drone::getPosition() noexcept {

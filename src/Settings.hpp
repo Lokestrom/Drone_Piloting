@@ -13,4 +13,6 @@ static inline ImGuiKey rotateUp = ImGuiKey::ImGuiKey_UpArrow;
 static inline ImGuiKey rotateDown = ImGuiKey::ImGuiKey_DownArrow;
 static inline ImGuiKey rollLeft = ImGuiKey::ImGuiKey_Q;
 static inline ImGuiKey rollRight = ImGuiKey::ImGuiKey_E;
+
+static inline double mouseSensitivity = 20.0;
 }
