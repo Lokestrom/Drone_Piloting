@@ -30,13 +30,30 @@ struct droneControls {
 Drone::Drone(std::filesystem::path folderPath)
 	: _angularMomentum(0.0f)
 	, _velocity(0.0f)
-	{
+{
+	load(folderPath);
+}
+
+Drone::Drone(std::filesystem::path folderPath, DroneState state) {
+	load(folderPath);
+
+	getPosition() = glm::vec3{ state.position[0], state.position[1], state.position[2] };
+	_velocity = glm::vec3{ state.velocity[0], state.velocity[1], state.velocity[2] };
+
+	getOrientation() = glm::quat{ state.orientation[0], state.orientation[1], state.orientation[2], state.orientation[3] };
+	glm::mat3 R = glm::mat3_cast(getOrientation());
+	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
+	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
+	_angularMomentum = angularVelocity;
+}
+
+void Drone::load(std::filesystem::path folderPath) {
 	std::ifstream file(folderPath / "config.json");
 	assert(file && "Cant open config, callers responsibility to check");
 
 	Json jsonData = Json::parse(file, nullptr, true, true);
 
-	//TODO: should check for if the fields are of the correct type
+	// TODO: should check for if the fields are of the correct type
 	_mass = jsonData["mass"];
 	_invInertia_B = glm::inverse(getMat3(jsonData["inertiaTensor"]));
 
@@ -68,7 +85,7 @@ Drone::Drone(std::filesystem::path folderPath)
 			.id = engineData["id"],
 			.maxThrust = engineData["maxThrust"],
 			.position = getVec3(engineData["position"]),
-			.direction = glm::vec3(0,1,0)
+			.direction = glm::vec3(0, 1, 0)
 		};
 		_engines[engine.id] = engine;
 	}
@@ -84,18 +101,6 @@ Drone::~Drone() noexcept {
 	vulkan::GameObjectContainer::Remove(objectID);
 }
 
-static glm::quat getStepQuaternion(const glm::quat& orientation, const glm::quat& desiredOrientation, int n, float maxRotationSpeed) noexcept {
-	glm::quat step = (desiredOrientation - orientation) / (float)n;
-	float stepMagnitude = sqrt(step.x * step.x + step.y * step.y + step.z * step.z);
-	if (stepMagnitude > maxRotationSpeed) {
-		float scale = maxRotationSpeed / stepMagnitude;
-		step.x *= scale;
-		step.y *= scale;
-		step.z *= scale;
-	}
-	return step;
-}
-
 static bool isnan(const glm::quat& q) noexcept {
 	return std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z) || std::isnan(q.w);
 }
@@ -105,7 +110,6 @@ static bool isnan(const glm::vec3& v) noexcept {
 }
 
 void Drone::update() {
-	//TODO: make this shit cleaner and physically correct
 	auto& obj = vulkan::GameObjectContainer::get(objectID);
 
 	glm::mat3 R = glm::mat3_cast(getOrientation());
@@ -120,12 +124,7 @@ void Drone::update() {
 		.keySpace = ImGui::IsKeyDown(droneControls::moveUp),
 		.keyShift = ImGui::IsKeyDown(droneControls::moveDown)
 	};
-	DroneState state{
-		.position = { obj.position.x, obj.position.y, obj.position.z },
-		.velocity = { _velocity.x, _velocity.y, _velocity.z },
-		.orientation = { obj.orientation.w, obj.orientation.x, obj.orientation.y, obj.orientation.z },
-		.angularVelocity = { angularVelocity.x, angularVelocity.y, angularVelocity.z }
-	};
+	DroneState state = getState();
 	CommandBuffer commands{
 		.commands = nullptr,
 		.count = 0
@@ -203,4 +202,23 @@ glm::quat& Drone::getOrientation() noexcept {
 
 const glm::quat& Drone::getOrientation() const noexcept {
 	return vulkan::GameObjectContainer::get(objectID).orientation;
+}
+
+vulkan::GameObject& Drone::getObject() const noexcept {
+	return vulkan::GameObjectContainer::get(objectID);
+}
+
+DroneState Drone::getState() const noexcept {
+	auto obj = getObject();
+
+	glm::mat3 R = glm::mat3_cast(getOrientation());
+	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
+	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
+
+	return DroneState{
+		.position = { obj.position.x, obj.position.y, obj.position.z },
+		.velocity = { _velocity.x, _velocity.y, _velocity.z },
+		.orientation = { obj.orientation.w, obj.orientation.x, obj.orientation.y, obj.orientation.z },
+		.angularVelocity = { angularVelocity.x, angularVelocity.y, angularVelocity.z }
+	};
 }

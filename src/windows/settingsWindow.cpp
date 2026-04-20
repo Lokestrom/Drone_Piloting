@@ -1,7 +1,6 @@
 #include "settingsWindow.hpp"
 
-#include "../App.hpp"
-#include "../Input/InputEventHandler.hpp"
+#include "../Settings.hpp"
 
 SettingsWindow::SettingsWindow() noexcept
 	: gui::ImGuiWindow("Settings", true) {
@@ -10,8 +9,12 @@ SettingsWindow::SettingsWindow() noexcept
 void SettingsWindow::render() {
 	begin();
 
-	ImGui::InputFloat("Vector radius scale: ", &App::vectorScale.x);
-	ImGui::InputFloat("Vector length scale: ", &App::vectorScale.y);
+	for (auto& category : settings::Settings()) {
+		if(ImGui::CollapsingHeader(category.first.c_str()))
+			for (auto& value : category.second) {
+				value.second->set();
+			}
+	}
 
 	end();
 }

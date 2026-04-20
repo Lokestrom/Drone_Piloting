@@ -12,6 +12,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+void createSettings();
+
 class App {
 public:
 	static void startup();
@@ -23,15 +25,15 @@ public:
 	static double getDeltaTime() { return dt; };
 	static GLFWwindow* getGLFWwindow() { return window; };
 
-	static Camera& getCamera() noexcept { return player.getCamera(); }
-	static std::optional<Drone>& getDrone() noexcept { return player.getDrone(); }
+	static vulkan::Camera& getCamera() noexcept { return player->getCamera(); }
+	static std::optional<Drone>& getDrone() noexcept { return player->getDrone(); }
 	static vulkan::UniformBufferObject getUBO() noexcept { 
-		vulkan::UniformBufferObject ubo = player.getUBO(); 
+		vulkan::UniformBufferObject ubo = player->getUBO();
 		ubo.lightSource = glm::vec4(map.getLightSourcePos(),1.0);
 		return ubo;
 	}
 
-	static void swapDrone(std::filesystem::path folderPath) { player.SwapDrone(folderPath); }
+	static void swapDrone(std::filesystem::path folderPath) { player->SwapDrone(folderPath); }
 
 	struct RenderVector {
 		glm::vec3 position;
@@ -48,7 +50,7 @@ private:
 private:
 	static inline ImGui_ImplVulkanH_Window* wd;
 	static inline GLFWwindow* window;
-	static inline Player player;
+	static inline std::unique_ptr<Player> player;
 	static inline Map map;
 	static inline double dt;
 };

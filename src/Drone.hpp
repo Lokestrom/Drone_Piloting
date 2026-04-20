@@ -36,7 +36,6 @@ struct DronePlugin {
 
 class Drone {
 public:
-
 	struct Engines {
 		unsigned int id;
 		float maxThrust;
@@ -45,6 +44,7 @@ public:
 	};
 
 	Drone(std::filesystem::path folderPath);
+	Drone(std::filesystem::path folderPath, DroneState state);
 	~Drone() noexcept;
 
 	void update();
@@ -58,6 +58,12 @@ public:
 	glm::vec3& getVelocity() noexcept { return _velocity; }
 	glm::vec3& getRotationalVelocity() noexcept { return _angularMomentum; }
 
+	DroneState getState() const noexcept;
+
+private:
+	void load(std::filesystem::path folderPath);
+
+	vulkan::GameObject& getObject() const noexcept;
 
 private:
 	vulkan::ID objectID;

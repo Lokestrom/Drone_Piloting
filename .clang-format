@@ -38,4 +38,6 @@ SpacesInSquareBrackets: false
 TabWidth: 4
 UseTab: true
 BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+PackConstructorInitializers: Never
 ConstructorInitializerAllOnOneLineOrOnePerLine: true

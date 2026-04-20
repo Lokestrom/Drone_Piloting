@@ -4,6 +4,10 @@
 #include "windows/DroneSelect.hpp"
 #include "windows/settingsWindow.hpp"
 
+void createSettings() {
+	vulkan::createRenderingSettings();
+}
+
 static void glfw_error_callback(int error, const char* description) {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
@@ -58,6 +62,7 @@ void App::startup() {
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;	  // Enable Docking
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;	  // Enable Multi-Viewport / Platform Windows
+	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 	// io.ConfigViewportsNoAutoMerge = true;
 	// io.ConfigViewportsNoTaskBarIcon = true;
 
@@ -87,13 +92,16 @@ void App::startup() {
 	init_info.CheckVkResultFn = check_vk_result;
 	ImGui_ImplVulkan_Init(&init_info);
 
-	player.SwapDrone(ASSET_DIR "drones/testDrone");
+	player = std::make_unique<Player>();
+	player->SwapDrone(ASSET_DIR "drones/testDrone");
 	map.load(ASSET_DIR "Maps/TestMap");
 	vectorScale = glm::vec2(0.3, 0.1);
 	gui::App::startup();
 	gui::App::addWindow<InfoWindow>();
 	gui::App::addWindow<DroneSelectWindow>();
 	gui::App::addWindow<SettingsWindow>();
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
 void App::shutdown() {
@@ -105,14 +113,14 @@ void App::shutdown() {
 	}
 
 	map.unload();
-	player.releaseDrone();
+	player->releaseDrone();
 
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 
 	assert(vulkan::GameObjectContainer::getObjects().size() == 0 
-		&& "Must destroy all game objects before shuting down vulkan");
+		&& "Must destroy all game objects before shutting down vulkan");
 
 	vulkan::App::shutdown();
 
@@ -130,8 +138,15 @@ void App::run() {
 		glfwPollEvents();
 		renderVectors.clear();
 
-		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
 			gui::App::enabled = !gui::App::enabled;
+			if (gui::App::enabled) {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			}
+			else {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+			}
+		}
 
 		glfwGetFramebufferSize(window, &width, &height);
 		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) {
@@ -149,7 +164,8 @@ void App::run() {
 
 		dt = io.DeltaTime;
 
-		player.update();
+		if (!gui::App::enabled)
+			player->update();
 
 		render();
 
@@ -178,5 +194,8 @@ void App::render() {
 	}
 	if (!mainMinimized) {
 		vulkan::App::endFrame(wd);
+	}
+	if (!gui::App::enabled) {
+		glfwSetCursorPos(window, 100, 100);
 	}
 }

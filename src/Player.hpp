@@ -25,11 +25,11 @@ public:
 
 	void update();
 
-	Camera& getCamera() noexcept { return _camera; }
+	vulkan::Camera& getCamera() noexcept { return _camera; }
 	std::optional<Drone>& getDrone() noexcept { return _drone; }
 
 private:
 	std::optional<Drone> _drone;
-	Camera _camera;
+	vulkan::Camera _camera;
 	Error err;
 };
