@@ -1,8 +1,6 @@
 #include "App.hpp"
 
-#include "windows/infoWindow.hpp"
-#include "windows/DroneSelect.hpp"
-#include "windows/settingsWindow.hpp"
+#include "windows/windowSetup.hpp"
 
 void createSettings() {
 	vulkan::createRenderingSettings();
@@ -97,9 +95,7 @@ void App::startup() {
 	map.load(ASSET_DIR "Maps/TestMap");
 	vectorScale = glm::vec2(0.3, 0.1);
 	gui::App::startup();
-	gui::App::addWindow<InfoWindow>();
-	gui::App::addWindow<DroneSelectWindow>();
-	gui::App::addWindow<SettingsWindow>();
+	setupWindows();
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
@@ -137,9 +133,27 @@ void App::run() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		renderVectors.clear();
+		renderPoints.clear();
 
+		if (ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
+			if (!gui::App::enabled)
+				gui::App::enabled = true;
+			else if (!gui::App::inMenu)
+				gui::App::enabled = false;
+			gui::App::inMenu = false;
+			if (gui::App::enabled) {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			}
+			else {
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+			}
+		}
 		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-			gui::App::enabled = !gui::App::enabled;
+			if (!gui::App::enabled)
+				gui::App::enabled = true;
+			else if (gui::App::inMenu)
+				gui::App::enabled = false;
+			gui::App::inMenu = true;
 			if (gui::App::enabled) {
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			}
@@ -164,8 +178,17 @@ void App::run() {
 
 		dt = io.DeltaTime;
 
-		if (!gui::App::enabled)
-			player->update();
+		bool updateCamera = true;
+		if (gui::App::enabled && !gui::App::inMenu && !ImGui::IsKeyPressed(ImGuiKey_MouseRight)) {
+			updateCamera = false;
+		}
+
+		if (!gui::App::enabled || !gui::App::inMenu)
+			player->update(updateCamera);
+
+		if (ImGui::IsKeyPressed(ImGuiKey_MouseRight) && gui::App::enabled && !gui::App::inMenu) {
+			glfwSetCursorPos(window, 100, 100);
+		}
 
 		render();
 

@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <functional>
 
 struct ImGui_ImplVulkanH_Window;
 namespace gui {
@@ -16,14 +18,23 @@ public:
 
 	static void render(ImGui_ImplVulkanH_Window* wd);
 
-	static void openWindow(std::string name);
 	template<typename T>
 		requires std::is_base_of_v<ImGuiWindow, T>
 	static void addWindow();
 	
+	static void addToOverlay(std::string name);
+	static void addToMenu(std::string name);
+
 	static inline bool enabled;
+	static inline bool inMenu;
 private:
+	// If we want to allow creating multiple windows 
+	// of the same type, we would need to change this shit
+	
 	static inline std::vector<std::unique_ptr<ImGuiWindow>> windows;
+	static inline std::vector<ImGuiWindow*> overlayWindows;
+	static inline std::vector<ImGuiWindow*> menuWindows;
+
 };
 
 template <typename T>

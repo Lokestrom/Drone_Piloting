@@ -40,8 +40,13 @@ public:
 		glm::vec3 dir;
 		glm::vec4 color = glm::vec4(1, 0, 0, 1);
 	};
+	struct RenderPoint {
+		glm::vec3 position;
+		glm::vec4 color = glm::vec4(1, 0, 0, 1);
+	};
 
 	static inline std::vector<RenderVector> renderVectors;
+	static inline std::vector<RenderPoint> renderPoints;
 	static inline glm::vec2 vectorScale;
 
 private:

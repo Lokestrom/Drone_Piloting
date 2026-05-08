@@ -23,7 +23,7 @@ public:
 
 	vulkan::UniformBufferObject getUBO() const noexcept;
 
-	void update();
+	void update(bool updateCamera);
 
 	vulkan::Camera& getCamera() noexcept { return _camera; }
 	std::optional<Drone>& getDrone() noexcept { return _drone; }

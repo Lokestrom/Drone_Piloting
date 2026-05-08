@@ -1,0 +1,29 @@
+#pragma once
+
+#include "guiApp.hpp"
+
+namespace gui {
+
+void renderToolBar() {
+	// should store a list of names
+
+	auto addFunction = App::inMenu ? App::addToMenu : App::addToOverlay;
+
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Info")) {
+				addFunction("Info");
+			}
+			if (ImGui::MenuItem("Drone select")) {
+				addFunction("Drone select");
+			}
+			if (ImGui::MenuItem("Settings")) {
+				addFunction("Settings");
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+}
+
+}

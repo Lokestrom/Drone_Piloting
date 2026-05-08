@@ -4,6 +4,10 @@
 
 #include <filesystem>
 
+// split in 2 parts
+// create a sandbox with no objects just the forces
+// so that it can be used in the droneSolver
+
 class Map {
 public:
 	Map() noexcept = default;

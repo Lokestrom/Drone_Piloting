@@ -6,10 +6,12 @@
 
 #include <ImGui/imgui_impl_vulkan.h>
 #include <ImGui/imgui_impl_glfw.h>
+#include "toolBar.hpp"
 
 namespace gui {
 void App::startup() {
 	enabled = false;
+	inMenu = false;
 }
 void App::generateWindows() {
 	ImGui_ImplVulkan_NewFrame();
@@ -18,14 +20,30 @@ void App::generateWindows() {
 	
 	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-	if (enabled)
-		for (auto& window : windows) {
-			if (window->isOpen())
+
+	if (enabled) {
+		renderToolBar();
+		if (inMenu) {
+			for (auto i = 0uz; i < menuWindows.size(); ++i) {
+				auto window = menuWindows[i];
+				if (!window->isOpen())
+					menuWindows.erase(menuWindows.begin() + i--);
 				window->render();
+			}
 		}
+		else {
+			for (auto i = 0uz; i < overlayWindows.size(); ++i) {
+				auto window = overlayWindows[i];
+				if (!window->isOpen())
+					overlayWindows.erase(overlayWindows.begin() + i--);
+				window->render();
+			}
+		}
+	}
 
 	ImGui::Render();
 }
+
 void App::render(ImGui_ImplVulkanH_Window* wd) {
 	
 	ImGui_ImplVulkanH_Frame* fd = &wd->Frames[wd->FrameIndex];
@@ -44,10 +62,16 @@ void App::render(ImGui_ImplVulkanH_Window* wd) {
 	static_cast<vk::CommandBuffer>(fd->CommandBuffer).endRenderPass();
 }
 
-void App::openWindow(std::string name) {
-	auto window = std::ranges::find_if(windows, [&](std::unique_ptr<ImGuiWindow>& window) { return window->getName() == name; });
-	assert(window != windows.end() && "Tried opening a window that does not exist");
-	window->get()->open();
+void App::addToOverlay(std::string name) {
+	auto window = std::ranges::find_if(windows, [&](const std::unique_ptr<ImGuiWindow>& window) { return window->getName() == name; });
+	assert(window != windows.end() && "Tried adding a window to the overlay that does not exist");
+	overlayWindows.push_back(window->get());
+}
+
+void App::addToMenu(std::string name) {
+	auto window = std::ranges::find_if(windows, [&](const std::unique_ptr<ImGuiWindow>& window) { return window->getName() == name; });
+	assert(window != windows.end() && "Tried adding a window to the menu that does not exist");
+	menuWindows.push_back(window->get());
 }
 
 }

@@ -2,73 +2,172 @@
 \usepackage{amsmath}
 \usepackage{hyperref}
 \usepackage{amssymb}
+\usepackage{dsfont}
 
+\author{Loke Strøm Haugsnes}
 \setlength{\parindent}{0pt}
 
 \title{Mathematics for Drone Piloting} 
 
 \begin{document}
-	\maketitle
-	This document describes the mathematical model used for rigid body dynamics
-	in the drone piloting simulation.
+\maketitle
 
-    \section{Rigid body}
-	\subsection*{Definitions:}
-	\begin{tabbing}
-		\hspace{1cm}\= \kill
-		\> \( M \) is the mass of the rigid body. \\
-        \> \( P \) is the position of the rigid body. \\
-        \> \( v \) is the velocity of the rigid body. \\
-        \> \( a \) is the acceleration of the rigid body. \\
-		\> \( O_M \) is the center of mass of the rigid body in body frame. \\
-		\> \( I \) is the inertia tensor of the rigid body about its center of mass. \\
-		\> \( L \) is the angular momentum of the rigid body. \\
-        \> \( q \) is the orientation of the rigid body, represented as a quaternion. \\
-		\> \( \tau \) is the torque applied to the rigid body. \\
-        \> \( F_S \) is the sum of the forces applied to the rigid body in body frame. \\
-        \> \( F_{DS} \) is the sum of the force displacement from \( O_M \). \\
-	\end{tabbing}
-    The subscript \( B \) denotes that the variable is expressed in the body frame.
+This document describes the mathematical model used for rigid body dynamics
+in the drone piloting simulation.
 
-    \subsection*{Variable Initialization:}
-    From the drone configuration file:
-    \begin{tabbing}
-        \hspace{1cm}\= \kill
-        \> \( M \) is defined as the mass of the drone. \\
-        \> \( I_B \) is defined as the inertia tensor of the drone. \\
-        \> \( O_M \) is defined as the center of mass of the drone. \\
-    \end{tabbing}
-    Note: Other variables in the JSON configuration file have no effect on the math, 
-    as they are only used for visualization and other purposes even the motor properties, 
-    as they are used to calculate the forces applied to the drone, which is represented by \( F_S \) and \( F_{DS} \). \\
+\section{Rigid body}
 
-    Then the rest of the variables will be initialized too zero, as the drone starts at rest.
-    Or they may be affected by the map configuration file or other factors like swapping the drone mid flight.
-    This covers all the variables initialized state. 
-    The next step is to define how these variables are updated during the simulation. 
-    But before that it is important to note that the sum of forces \( F_S \) 
-    and the sum of force displacement \( F_{DS} \) is the basis for all the other variables.
-    It will be updated based on the inputs of users and the physics of the environment.
-    That again comes from the drone control script and the map configuration file.
+\subsection*{Definitions:}
 
-    \subsection*{Equations of motion:}
-    The equations of motion for the rigid body are given by:
-    \begin{align*}
-        \dot{P} &= v \\
-        \dot{v} &= \frac{F_S \cdot |F_{DS}|}{M} \\
-        \dot{q} &= \Omega(\omega) \\
-        \dot{L} &= \tau_B \\
-        \omega &= I^{-1} L \\
-        \tau &= F_S \times F_{DS}
-    \end{align*}
-    where:
-	\begin{tabbing}
-		\hspace{1cm}\= \kill
-		\> \( \Omega(\omega) \) is a axis quaternion \((||\omega||, |\omega|)\)
-	\end{tabbing}
+\begin{tabbing}
+	\hspace{1cm}\= \kill
+	\> \( M \) is the mass of the rigid body. \\
+    \> \( P \) is the position of the rigid body. \\
+    \> \( v \) is the velocity of the rigid body. \\
+    \> \( a \) is the acceleration of the rigid body. \\
+	\> \( O_M \) is the center of mass of the rigid body in body frame. \\
+	\> \( I \) is the inertia tensor of the rigid body about its center of mass. \\
+	\> \( L \) is the angular momentum of the rigid body. \\
+    \> \( q \) is the orientation of the rigid body, represented as a quaternion. \\
+	\> \( \tau \) is the torque applied to the rigid body. \\
+    \> \( F_S \) is the sum of the forces applied to the rigid body in body frame. \\
+    \> \( F_{DS} \) is the sum of the force displacement from \( O_M \). \\
+\end{tabbing}
+The subscript \( B \) denotes that the variable is expressed in the body frame.
+
+\subsection*{Variable Initialization:}
+From the drone configuration file:
+\begin{tabbing}
+    \hspace{1cm}\= \kill
+    \> \( M \) is defined as the mass of the drone. \\
+    \> \( I_B \) is defined as the inertia tensor of the drone. \\
+    \> \( O_M \) is defined as the center of mass of the drone. \\
+\end{tabbing}
+Note: Other variables in the JSON configuration file have no effect on the math, 
+as they are only used for visualization and other purposes even the motor properties, 
+as they are used to calculate the forces applied to the drone, which is represented by \( F_S \) and \( F_{DS} \). \\
+Then the rest of the variables will be initialized too zero, as the drone starts at rest.
+Or they may be affected by the map configuration file or other factors like swapping the drone mid flight.
+This covers all the variables initialized state. 
+The next step is to define how these variables are updated during the simulation. 
+But before that it is important to note that the sum of forces \( F_S \) 
+and the sum of force displacement \( F_{DS} \) is the basis for all the other variables.
+It will be updated based on the inputs of users and the physics of the environment.
+That again comes from the drone control script and the map configuration file.
+
+\subsection*{Equations of motion:}
+The equations of motion for the rigid body are given by:
+\begin{align*}
+    \ddot{P} &= \frac{F_S}{M} \\
+    \tau &= F_S \times F_{DS} \\
+    \dot{L} &= \tau_B \\
+    \omega &= I^{-1} L \\
+    \dot{q} &= \Omega(\omega)
+\end{align*}
+where:
+\begin{tabbing}
+	\hspace{1cm}\= \kill
+	\> \( \Omega(\omega) \) is a axis quaternion \((||\omega||, |\omega|)\)
+\end{tabbing}
+
+
+\section{PID controller}
+
+\subsection*{Additional Definitions:}
+\begin{tabbing}
+    \hspace{1cm}\= \kill
+    \> \( P_d \) is the desired position in world frame. \\
+    \> \( v_d \) is the desired velocity in world frame. \\
+    \> \( q_d \) is the desired orientation. \\
+    \> \( \omega_d \) is the desired angular velocity. \\
+    \> \( e_P = P_d - P \) is the position error. \\
+    \> \( e_v = v_d - v \) is the velocity error. \\
+    \> \( e_q \) is the orientation error (quaternion difference). \\
+    \> \( e_\omega = \omega_d - \omega \) is the angular velocity error. \\
+    \> \( F_W \) is the total force in world frame. \\
+    \> \( R(q, v) \) rotates the vector \( v \) by the quaternion \( q \). \\
+    \> \( g \) is gravitational acceleration vector. \\
+\end{tabbing}
+
+\subsection*{PID Structure:}
+Control is separated into translational and rotational components.
+
+\subsection*{Translational Control (Position $\rightarrow$ Force):}
+
+The desired total force in world frame is:
+\begin{align*}
+    F_W &= K_p^P e_P + K_d^P e_v + K_i^P \int e_P \, dt + M g
+\end{align*}
+
+This force is transformed into body frame:
+\begin{align*}
+    F_S &= R(q', F_W)
+\end{align*}
+
+\subsection*{Rotational Control (Orientation $\rightarrow$ Torque):}
+
+The orientation error is computed using quaternion difference:
+\begin{align*}
+    e_q &= q_d \cdot q^{-1}
+\end{align*}
+
+The torque is defined by:
+\begin{align*}
+    \tau_B &= K_p^R \, \text{vec}(e_q) + K_d^R e_\omega + K_i^R \int \text{vec}(e_q) \, dt
+\end{align*}
+
+where \( \text{vec}(e_q) \) extracts the vector part of the quaternion.\\
+
+This is just an example actual implementations may use more PID controllers 
+or even just PI/PD or other combinations.
+
+\subsection*{Force and Torque Allocation:}
+
+The total force and torque are given by:
+\begin{align*}
+    F_S &= \sum_{i=1}^{n} F_i \\
+    \tau &= \sum_{i=1}^{n} D_i \times F_i
+\end{align*}
+where:
+\begin{tabbing}
+    \hspace{1cm}\= \kill
+    \> \( F_i \) is the force produced by the \( i \)-th motor. \\
+    \> \( D_i \) is the position of the \( i \)-th motor relative to the center of mass. \\
+\end{tabbing}
+
+This can be written as a linear system:
+\begin{align*}
+    \begin{bmatrix}
+        F_S \\
+        \tau
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+        \mathds{1}_3 & \mathds{1}_3 & \cdots & \mathds{1}_3 \\
+        [D_1]_\times & [D_2]_\times & \cdots & [D_n]_\times
+    \end{bmatrix}
+    \begin{bmatrix}
+        F_1 \\
+        F_2 \\
+        \vdots \\
+        F_n
+    \end{bmatrix}
+\end{align*}
+
+\subsection*{Final Control Pipeline:}
+
+At each timestep:
+\begin{enumerate}
+    \item Compute position and velocity error.
+    \item Compute desired force \( F_S \).
+    \item Compute orientation and angular velocity error.
+    \item Compute torque \( \tau_B \).
+    \item Solve for motor forces \( F_i \).
+    \item Apply forces to update \( F_S \) and \( F_{DS} \).
+\end{enumerate}
 
     \section{References}
-    This math is based on the more in-depth document in the rocket simulation project, 
-    available at the following link:
+    This math is based on the more in-depth document in the rocket simulation 
+    project, available at the following link:
 	\url{https://github.com/Lokestrom/rocketSim-code/blob/main/math.pdf}
 \end{document}

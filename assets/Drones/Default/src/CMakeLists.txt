@@ -10,12 +10,15 @@ file(GLOB cppFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
-add_library(control SHARED ${cppFiles})
+add_library(defaultDrone SHARED ${cppFiles})
 
-set(DRONE_ROOT "${CMAKE_SOURCE_DIR}/..")
+set(DRONE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-set_target_properties(control PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${DRONE_ROOT}"
-    LIBRARY_OUTPUT_DIRECTORY "${DRONE_ROOT}"
-    ARCHIVE_OUTPUT_DIRECTORY "${DRONE_ROOT}"
+set_target_properties(defaultDrone PROPERTIES
+    OUTPUT_NAME "control"
+    RUNTIME_OUTPUT_DIRECTORY "${DRONE_ROOT}/$<CONFIG>"
+    LIBRARY_OUTPUT_DIRECTORY "${DRONE_ROOT}/$<CONFIG>"
+    ARCHIVE_OUTPUT_DIRECTORY "${DRONE_ROOT}/$<CONFIG>"
 )
+
+target_link_libraries(defaultDrone PUBLIC external DronePiloterAPI)

@@ -18,5 +18,13 @@ void InfoWindow::render() {
 		ImGui::InputFloat3("Drone rotational velocity", &App::getDrone()->getRotationalVelocity().x);
 	}
 
+	if (App::getDrone()->hasSettings()) {
+		if (ImGui::CollapsingHeader("Settings")) {
+			for (size_t i = 0; i < App::getDrone()->getSettings()->count; ++i) {
+				ImGui::SliderFloat(App::getDrone()->getSettings()->names[i], App::getDrone()->getSettings()->values[i], 0.0f, 5.0f, "%.2f");
+			}
+		}
+	}
+
 	end();
 }

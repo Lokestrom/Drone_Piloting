@@ -58,14 +58,15 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 	};
 }
 
-void Player::update() {
+void Player::update(bool updateCamera) {
 	using vulkan::Camera;
 	if (ImGui::IsKeyPressed(ImGuiKey_F))
 		_camera.setState(Camera::State::FreeCAM);
 	if (ImGui::IsKeyPressed(ImGuiKey_T))
 		_camera.setState(Camera::State::Orbit);
 
-	_camera.update();
+	if (updateCamera)
+		_camera.update();
 	if (_drone.has_value())
 		_drone->update();
 }

@@ -94,7 +94,16 @@ void Drone::load(std::filesystem::path folderPath) {
 #else
 	_plugin.lib = SharedLib(folderPath / "Release/control");
 #endif
-	_plugin.update = reinterpret_cast<UpdateFn>(_plugin.lib.getFunction("update"));
+	_plugin.update = static_cast<UpdateFn>(_plugin.lib.getFunction("update"));
+	if (_plugin.lib.hasFunction("getTargetPosition")) {
+		_plugin.getTargetPosition = static_cast<GetTargetPositionFn>(_plugin.lib.getFunction("getTargetPosition"));
+	}
+	if (_plugin.lib.hasFunction("setup")) {
+		static_cast<SetupFn>(_plugin.lib.getFunction("setup"))(folderPath.string().c_str());
+	}
+	if (_plugin.lib.hasFunction("getSettings")) {
+		_plugin.getSettings = static_cast<GetSettingsFn>(_plugin.lib.getFunction("getSettings"));
+	}
 }
 
 Drone::~Drone() noexcept {
@@ -130,7 +139,12 @@ void Drone::update() {
 		.count = 0
 	};
 
-	_plugin.update(&input, &state, &commands);
+	_plugin.update(&input, &state, (float)App::getDeltaTime(), &commands);
+	if (_plugin.getTargetPosition) {
+		glm::vec3 targetPos;
+		_plugin.getTargetPosition(&targetPos.x);
+		::App::renderPoints.push_back({ targetPos, glm::vec4(1, 1, 0, 1) });
+	}
 
 	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0, -10.0, 0.0));
 	glm::vec3 torque = glm::vec3(0.0, 0.0, 0.0);
@@ -156,14 +170,14 @@ void Drone::update() {
 	}
 	
 	forces = glm::rotate(getOrientation(), forces);
-	forces -= (glm::length(_velocity) * _velocity) / 10.0f; // resistance
+	//forces -= (glm::length(_velocity) * _velocity) / 10.0f; // resistance
 	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f, glm::vec4(0, 0, 1, 1) });
 
 	obj.position += _velocity * (float)App::getDeltaTime();
 	_velocity += (forces / _mass) * (float)App::getDeltaTime();
 
 	_angularMomentum += torque * (float)App::getDeltaTime();
-	_angularMomentum -= (glm::length(_angularMomentum) * _angularMomentum) / 10.0f; // angular resistance
+	//_angularMomentum -= (glm::length(_angularMomentum) * _angularMomentum) / 10.0f; // angular resistance
 
 	angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
 

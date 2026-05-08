@@ -11,7 +11,7 @@ Note that the code uses SI units, so make sure to scale your models accordingly.
 Create a folder in `assets/drones` that must contain:
 * `config.json`: The properties of the drone, such as mass, max thrust, etc.
 * `model.obj`: The 3D model of the drone, must be a Wavefront .obj file.
-* `Debug/control.dll/so`: The control code for the drone, this is a dynamic library that contains the logic for controlling the drone.
+* `Debug/control.dll`: The control code for the drone, this is a dynamic library that contains the logic for controlling the drone.
 
 Optionally you can add a README.md file or any other useful files to the folder. <br>
 
@@ -58,6 +58,18 @@ The best way of understating how to write the control code is to look at the exa
 Here is some example code and a CMkeLists.txt that structures everything for you, Debug and Release folders with the dynamic library.
 When running in the respective configurations the software uses the correct library, there is no error checking so the program will crach
 silently and this can be a reason why.
+
+### Optionals
+The code also supports:
+```cpp
+DRONE_API void setup(const char* dronePath)
+DRONE_API void getTargetPosition(float* outPosition)
+DRONE_API SettingsBuffer* getSettings()
+```
+
+The `setup` function runs in the drone constructor, for now it only resives the path to the drone folder. May extend to resiveing a start state. <br>
+The `getTargetPosition` function must output a 3d position that can be toataly dictaded by the user but it is displayed as a point in the renderer. <br>
+The `getSettings` funcion outputs the settings of the drone that can be tweeked by the user.
 
 ## Future plans
 

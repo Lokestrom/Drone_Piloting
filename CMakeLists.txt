@@ -20,3 +20,5 @@ add_compile_definitions(
 
 add_subdirectory(external)
 add_subdirectory(src)
+add_subdirectory(src/API/Helpers)
+add_subdirectory(assets)

@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 
 #include "rendering/gameObject.hpp"
-#include "DroneAPI.h"
+#include "API/DroneAPI.h"
 #include "sharedLib.hpp"
 
 struct Error {
@@ -32,7 +32,12 @@ private:
 struct DronePlugin {
 	SharedLib lib;
 	UpdateFn update;
+
+	GetTargetPositionFn getTargetPosition;
+	GetSettingsFn getSettings;
 };
+
+// have to separate it into 2 where one is just pure physics
 
 class Drone {
 public:
@@ -59,6 +64,9 @@ public:
 	glm::vec3& getRotationalVelocity() noexcept { return _angularMomentum; }
 
 	DroneState getState() const noexcept;
+
+	bool hasSettings() const noexcept { return _plugin.getSettings != nullptr; }
+	SettingsBuffer* getSettings() const noexcept { return _plugin.getSettings(); }
 
 private:
 	void load(std::filesystem::path folderPath);

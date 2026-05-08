@@ -29,6 +29,11 @@ public:
 
 
 	void* getFunction(const char* name) const noexcept;
+	bool hasFunction(const char* name) const noexcept {
+		// TODO: should handle errors and reset them to previous state 
+		// and check if the error is about missing function or something else
+		return getFunction(name) != nullptr;
+	}
 
 	bool isValid() const noexcept {
 		return handle != nullptr;
@@ -40,6 +45,7 @@ public:
 
 private:
 	void* handle;
+	// TODO: create a list insted
 	std::string errorMessage;
 };
 
