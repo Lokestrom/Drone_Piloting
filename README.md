@@ -46,7 +46,6 @@ Current plans for what i want to implement
 ### Rendering:
 * Shadows
 * Dynamic lighting
-* Textures
 
 ### Other:
 * FreeCAD live link and editor

@@ -54,8 +54,8 @@ static float ATT_KI = .5f;
 static float RATE_KP = 2.f;
 static float RATE_KD = 3.f;
 
-static float MOVE_SPEED = 1.0f;
-static float ALTITUDE_SPEED = 0.5f;
+static float MOVE_SPEED = 4.0f;
+static float ALTITUDE_SPEED = 3.0f;
 
 static const char* g_settingNames[] = {
 	"POS_KP",
@@ -198,6 +198,9 @@ static void updateTargetPosition(
 
 	if (input->keyShift)
 		g_targetPosition.y -= ALTITUDE_SPEED * dt;
+
+	
+	g_targetPosition.y = g_targetPosition.y < -10 ? -10 : g_targetPosition.y;
 }
 
 static glm::vec3 toVec(const float* data) {

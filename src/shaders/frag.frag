@@ -3,6 +3,7 @@
 layout (location = 0) in vec3 fragColor;
 layout (location = 1) in vec3 fragPosWorld;
 layout (location = 2) in vec3 fragNormalWorld;
+layout (location = 3) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
 
@@ -13,6 +14,8 @@ layout(binding = 0) uniform GlobalUbo {
     vec4 lightSource; // w for intencity
 } ubo;
 
+layout(set = 1, binding = 0) uniform sampler2D tex;
+
 void main()
 {
     vec3 N = normalize(fragNormalWorld);
@@ -21,8 +24,11 @@ void main()
     float NdotL = max(dot(N, L), 0.0);
 
     vec3 diffuse = fragColor * NdotL * ubo.lightSource.w;
-    vec3 ambient = 0.2 * fragColor;
+    vec3 ambient = 0.5 * fragColor;
 
-    vec3 finalColor = ambient + diffuse;
-    outColor = vec4(finalColor, 1.0);
+    vec3 lighting = ambient + diffuse;
+
+    vec3 albedo = texture(tex, uv).rgb;
+
+    outColor = vec4(lighting * albedo, 1.0);
 }
