@@ -51,6 +51,8 @@ public:
 
 private:
 	static void render();
+	//shuld delegate to somthing else like the inputhandler
+	static void updateMouseInput();
 
 private:
 	static inline ImGui_ImplVulkanH_Window* wd;

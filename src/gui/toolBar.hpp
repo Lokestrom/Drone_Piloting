@@ -20,6 +20,9 @@ void renderToolBar() {
 			if (ImGui::MenuItem("Settings")) {
 				addFunction("Settings");
 			}
+			if (ImGui::MenuItem("Console")) {
+				addFunction("Console");
+			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();

@@ -63,14 +63,24 @@ void App::render(ImGui_ImplVulkanH_Window* wd) {
 }
 
 void App::addToOverlay(std::string name) {
+	if (std::ranges::find_if(overlayWindows, [&](const ImGuiWindow* window) { return window->getName() == name; }) != overlayWindows.end()) {
+		ImGui::SetWindowFocus(name.c_str());
+		return;
+	}
 	auto window = std::ranges::find_if(windows, [&](const std::unique_ptr<ImGuiWindow>& window) { return window->getName() == name; });
 	assert(window != windows.end() && "Tried adding a window to the overlay that does not exist");
+	window->get()->open();
 	overlayWindows.push_back(window->get());
 }
 
 void App::addToMenu(std::string name) {
+	if (std::ranges::find_if(menuWindows, [&](const ImGuiWindow* window) { return window->getName() == name; }) != menuWindows.end()) {
+		ImGui::SetWindowFocus(name.c_str());
+		return;
+	}
 	auto window = std::ranges::find_if(windows, [&](const std::unique_ptr<ImGuiWindow>& window) { return window->getName() == name; });
 	assert(window != windows.end() && "Tried adding a window to the menu that does not exist");
+	window->get()->open();
 	menuWindows.push_back(window->get());
 }
 

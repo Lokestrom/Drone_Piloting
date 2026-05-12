@@ -1,34 +1,31 @@
 #include "App.hpp"
 
 #include "windows/windowSetup.hpp"
+#include "console.hpp"
+#include "rendering/helpers.hpp"
+
+#include <vulkan/vk_enum_string_helper.h>
 
 void createSettings() {
 	vulkan::createRenderingSettings();
+	createConsoleSettings();
 }
 
-static void glfw_error_callback(int error, const char* description) {
-	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+static void glfwErrorCallback(int error, const char* description) {
+	Console::log(Console::Type::error, std::string("GLFW error: Code: ") + std::to_string(error) + ", What: " + description);
 }
 
 static void check_vk_result(VkResult err) {
 	if (err == VK_SUCCESS)
 		return;
 	__debugbreak();
-	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+	Console::log(Console::Type::error, std::string("Vulkan error: ") + string_VkResult(err));
 	if (err < 0)
-		abort();
-}
-static void check_vk_result(vk::Result err) {
-	if (err == vk::Result::eSuccess)
-		return;
-	__debugbreak();
-	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
-	if (err < vk::Result::eSuccess)
-		abort();
+		std::terminate();
 }
 
 void App::startup() {
-	glfwSetErrorCallback(glfw_error_callback);
+	glfwSetErrorCallback(glfwErrorCallback);
 	if (!glfwInit())
 		throw std::runtime_error("GLFW initialization failed");
 
@@ -91,8 +88,13 @@ void App::startup() {
 	ImGui_ImplVulkan_Init(&init_info);
 
 	player = std::make_unique<Player>();
-	player->SwapDrone(ASSET_DIR "drones/testDrone");
-	map.load(ASSET_DIR "Maps/TestMap");
+	try {
+		player->SwapDrone(ASSET_DIR "drones/testDrone");
+		map.load(ASSET_DIR "Maps/TestMap");
+	}
+	catch (std::exception& e) {
+		Console::log(Console::Type::error, std::string("Failed to load default drone or map with: ") + e.what());
+	}
 	vectorScale = glm::vec2(0.3, 0.1);
 	gui::App::startup();
 	setupWindows();
@@ -126,73 +128,96 @@ void App::shutdown() {
 
 #include "Input/InputEventHandler.hpp"
 
+void App::updateMouseInput() {
+	glm::vec<2, double> mousePos;
+	glfwGetCursorPos(window, &mousePos.x, &mousePos.y);
+
+
+	if (!gui::App::enabled) {
+		glfwSetCursorPos(window, (double)width / 2.0, (double)height / 2.0);
+		InputEventHandler::mouseDelta = mousePos - glm::vec<2, double>{ (double)width / 2.0, (double)height / 2.0 };
+	}
+	else {
+		InputEventHandler::mouseDelta = InputEventHandler::lastMousePos - mousePos;
+		InputEventHandler::lastMousePos = mousePos;
+	}
+}
+
 void App::run() {
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	ImGuiIO& io = ImGui::GetIO();
 
 	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-		renderVectors.clear();
-		renderPoints.clear();
+		try {
+			glfwPollEvents();
+			renderVectors.clear();
+			renderPoints.clear();
 
-		if (ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
-			if (!gui::App::enabled)
-				gui::App::enabled = true;
-			else if (!gui::App::inMenu)
-				gui::App::enabled = false;
-			gui::App::inMenu = false;
-			if (gui::App::enabled) {
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			//TODO: in overlay holding right click should lock cursor pos and rotate cam.
+			//TODO: this should be the gui::App's responsibility
+			if (ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
+				if (!gui::App::enabled)
+					gui::App::enabled = true;
+				else if (!gui::App::inMenu)
+					gui::App::enabled = false;
+				gui::App::inMenu = false;
+				if (gui::App::enabled) {
+					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+				}
+				else {
+					glfwSetCursorPos(window, (double)width / 2.0, (double)height / 2.0);
+					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+				}
 			}
-			else {
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+			if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+				if (!gui::App::enabled)
+					gui::App::enabled = true;
+				else if (gui::App::inMenu)
+					gui::App::enabled = false;
+				gui::App::inMenu = true;
+				if (gui::App::enabled) {
+					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+				}
+				else {
+					glfwSetCursorPos(window, (double)width / 2.0, (double)height / 2.0);
+					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+				}
 			}
-		}
-		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-			if (!gui::App::enabled)
-				gui::App::enabled = true;
-			else if (gui::App::inMenu)
-				gui::App::enabled = false;
-			gui::App::inMenu = true;
-			if (gui::App::enabled) {
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+			updateMouseInput();
+
+			glfwGetFramebufferSize(window, &width, &height);
+			if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) {
+				ImGui_ImplVulkan_SetMinImageCount(vulkan::App::minImageCount);
+				ImGui_ImplVulkanH_CreateOrResizeWindow(vulkan::App::instance, vulkan::App::physicalDevice, vulkan::App::device,
+					&vulkan::App::mainWindowData, vulkan::App::queueFamily, nullptr, width, height, vulkan::App::minImageCount);
+				vulkan::App::rebuild();
+				vulkan::App::mainWindowData.FrameIndex = 0;
+				vulkan::App::swapChainRebuild = false;
 			}
-			else {
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+			if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
+				ImGui_ImplGlfw_Sleep(10);
+				continue;
 			}
+
+			dt = io.DeltaTime;
+
+			bool updateCamera = true;
+			if (gui::App::enabled && !gui::App::inMenu) {
+				updateCamera = false;
+			}
+
+			if (!gui::App::enabled || !gui::App::inMenu)
+				player->update(updateCamera);
+
+			render();
+
+			InputEventHandler::reset();
 		}
-
-		glfwGetFramebufferSize(window, &width, &height);
-		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) {
-			ImGui_ImplVulkan_SetMinImageCount(vulkan::App::minImageCount);
-			ImGui_ImplVulkanH_CreateOrResizeWindow(vulkan::App::instance, vulkan::App::physicalDevice, vulkan::App::device,
-				&vulkan::App::mainWindowData, vulkan::App::queueFamily, nullptr, width, height, vulkan::App::minImageCount);
-			vulkan::App::rebuild();
-			vulkan::App::mainWindowData.FrameIndex = 0;
-			vulkan::App::swapChainRebuild = false;
+		catch (std::exception& e) {
+			Console::log(Console::Type::error, std::string("Unhandled exception in loop") + e.what() 
+				+ "\nIf this error does not stop restart application");
 		}
-		if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
-			ImGui_ImplGlfw_Sleep(10);
-			continue;
-		}
-
-		dt = io.DeltaTime;
-
-		bool updateCamera = true;
-		if (gui::App::enabled && !gui::App::inMenu && !ImGui::IsKeyPressed(ImGuiKey_MouseRight)) {
-			updateCamera = false;
-		}
-
-		if (!gui::App::enabled || !gui::App::inMenu)
-			player->update(updateCamera);
-
-		if (ImGui::IsKeyPressed(ImGuiKey_MouseRight) && gui::App::enabled && !gui::App::inMenu) {
-			glfwSetCursorPos(window, 100, 100);
-		}
-
-		render();
-
-		InputEventHandler::reset();
 	}
 }
 
@@ -217,8 +242,5 @@ void App::render() {
 	}
 	if (!mainMinimized) {
 		vulkan::App::endFrame(wd);
-	}
-	if (!gui::App::enabled) {
-		glfwSetCursorPos(window, 100, 100);
 	}
 }

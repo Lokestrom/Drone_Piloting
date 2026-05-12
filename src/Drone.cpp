@@ -89,6 +89,7 @@ void Drone::load(std::filesystem::path folderPath) {
 		};
 		_engines[engine.id] = engine;
 	}
+	_plugin = {};
 #ifdef _DEBUG
 	_plugin.lib = SharedLib(folderPath / "Debug/control");
 #else

@@ -19,6 +19,6 @@ add_subdirectory(windows)
 add_subdirectory(gui)
 add_subdirectory(shaders)
 
-add_executable(app ${cppFiles})
+add_executable(app WIN32 ${cppFiles})
 target_link_libraries(app PUBLIC imgui external vulkanInterface guiInterface windows)
 target_include_directories(app PUBLIC ${CMAKE_SOURCE_DIR})
