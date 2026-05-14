@@ -13,7 +13,7 @@ class ConsoleWindow
 public:
 	ConsoleWindow() noexcept;
 
-	void render() override;
+	void _render() override;
 
 private:
 

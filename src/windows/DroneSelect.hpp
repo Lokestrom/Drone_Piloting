@@ -9,8 +9,8 @@ class DroneSelectWindow
 public:
 	DroneSelectWindow() noexcept;
 
-	void render() override;
 private:
+	void _render() override;
 
 	void renderFolder(const std::filesystem::path& droneFolder);
 

@@ -27,7 +27,7 @@ build/src/<config>/app # Debug or Release
 
 ## Using
 Control using W, A, S, D, left shift, and space, and ESC for menu, TAB for overlay, F for freecam, T for orbit cam. <br>
-Only the testDrone has a proper PID controler.<br>
+Only the testDrone has a proper PID controller.<br>
 Drones and maps stored in assets. Currently only drones can be loaded dynamically but map has to be 
 changed in code or in the original folder.
 

@@ -53,7 +53,7 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 	return {
 		.proj = _camera.getProjection(),
 		.view = vulkan::getViewMatrix(cameraPosition, cameraOrientation),
-		.cameraPos = glm::vec4(_camera.getPosition(), 0.0),
+		.cameraPos = glm::vec4(cameraPosition, 0.0),
 		.lightSource = glm::vec4()
 	};
 }

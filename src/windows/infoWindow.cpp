@@ -7,9 +7,7 @@ InfoWindow::InfoWindow() noexcept
 	: gui::ImGuiWindow("Info", true) {
 }
 
-void InfoWindow::render() {
-	begin();
-
+void InfoWindow::_render() {
 	ImGui::InputFloat3("Camera position", &App::getCamera().getPositionRef().x);
 	if (App::getDrone().has_value()) {
 		ImGui::InputFloat3("Drone position", &App::getDrone()->getPosition().x);
@@ -25,6 +23,4 @@ void InfoWindow::render() {
 			}
 		}
 	}
-
-	end();
 }

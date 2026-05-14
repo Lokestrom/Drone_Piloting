@@ -7,5 +7,5 @@ class SettingsWindow
 public:
 	SettingsWindow() noexcept;
 
-	void render() override;
+	void _render() override;
 };

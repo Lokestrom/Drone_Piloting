@@ -5,19 +5,19 @@
 
 class Console {
 public:
-	enum class Type {
-		meassage,
-		warning,
-		error,
-		debug
-	};
 
 	struct Log {
+		enum class Type {
+			message,
+			warning,
+			error,
+			debug
+		};
 		Type type;
 		std::string what;
 	};
 
-	static void log(Type type, std::string what) {
+	static void log(Log::Type type, std::string what) {
 		_logs.emplace_back(type, what);
 	}
 

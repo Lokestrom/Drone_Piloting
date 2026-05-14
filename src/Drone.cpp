@@ -16,6 +16,13 @@
 #include <windows.h>
 #endif
 
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
+
 using Json = nlohmann::json;
 
 struct droneControls {
@@ -111,13 +118,13 @@ Drone::~Drone() noexcept {
 	vulkan::GameObjectContainer::Remove(objectID);
 }
 
-static bool isnan(const glm::quat& q) noexcept {
-	return std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z) || std::isnan(q.w);
-}
-
-static bool isnan(const glm::vec3& v) noexcept {
-	return std::isnan(v.x) || std::isnan(v.y) || std::isnan(v.z);
-}
+//static bool isnan(const glm::quat& q) noexcept {
+//	return std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z) || std::isnan(q.w);
+//}
+//
+//static bool isnan(const glm::vec3& v) noexcept {
+//	return std::isnan(v.x) || std::isnan(v.y) || std::isnan(v.z);
+//}
 
 void Drone::update() {
 	auto& obj = vulkan::GameObjectContainer::get(objectID);
@@ -153,6 +160,7 @@ void Drone::update() {
 	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces), glm::vec4(0, 1, 0, 1) });
 	for (int i = 0; i < commands.count; ++i) {
 		const auto& command = commands.commands[i];
+		
 		if (_engines.find(command.engineId) == _engines.end()) {
 			std::cerr << "Invalid engine ID: " << command.engineId << std::endl;
 			continue;

@@ -28,6 +28,10 @@
     {
       "model": "ground.obj",
       "position": [ 0, -10, 0 ]
+    },
+    {
+      "model": "multiTest/multi.obj",
+      "position": [ 10, 0, 0 ]
     }
   ]
 }

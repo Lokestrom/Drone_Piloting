@@ -12,14 +12,14 @@ void createSettings() {
 }
 
 static void glfwErrorCallback(int error, const char* description) {
-	Console::log(Console::Type::error, std::string("GLFW error: Code: ") + std::to_string(error) + ", What: " + description);
+	Console::log(Console::Log::Type::error, std::string("GLFW error: Code: ") + std::to_string(error) + ", What: " + description);
 }
 
 static void check_vk_result(VkResult err) {
 	if (err == VK_SUCCESS)
 		return;
 	__debugbreak();
-	Console::log(Console::Type::error, std::string("Vulkan error: ") + string_VkResult(err));
+	Console::log(Console::Log::Type::error, std::string("Vulkan error: ") + string_VkResult(err));
 	if (err < 0)
 		std::terminate();
 }
@@ -87,13 +87,14 @@ void App::startup() {
 	init_info.CheckVkResultFn = check_vk_result;
 	ImGui_ImplVulkan_Init(&init_info);
 
+	// TODO: create async loading.
 	player = std::make_unique<Player>();
 	try {
 		player->SwapDrone(ASSET_DIR "drones/testDrone");
-		map.load(ASSET_DIR "Maps/TestMap");
+		map.load(ASSET_DIR "maps/TestMap");
 	}
 	catch (std::exception& e) {
-		Console::log(Console::Type::error, std::string("Failed to load default drone or map with: ") + e.what());
+		Console::log(Console::Log::Type::error, std::string("Failed to load default drone or map with: ") + e.what());
 	}
 	vectorScale = glm::vec2(0.3, 0.1);
 	gui::App::startup();
@@ -106,7 +107,7 @@ void App::shutdown() {
 	try {
 		vulkan::App::device.waitIdle();
 	}
-	catch (std::exception& e) {
+	catch (...) {
 		throw std::runtime_error("Failed to wait when shutting down");
 	}
 
@@ -215,7 +216,7 @@ void App::run() {
 			InputEventHandler::reset();
 		}
 		catch (std::exception& e) {
-			Console::log(Console::Type::error, std::string("Unhandled exception in loop") + e.what() 
+			Console::log(Console::Log::Type::error, std::string("Unhandled exception in loop") + e.what() 
 				+ "\nIf this error does not stop restart application");
 		}
 	}

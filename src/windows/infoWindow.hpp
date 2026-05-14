@@ -8,5 +8,5 @@ class InfoWindow
 public:
 	InfoWindow() noexcept;
 
-	void render() override;
+	void _render() override;
 };

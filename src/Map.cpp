@@ -2,6 +2,7 @@
 
 #include <json.hpp>
 #include <fstream>
+#include <thread>
 
 using Json = nlohmann::json;
 
@@ -36,33 +37,46 @@ void Map::load(std::filesystem::path folderPath) {
 	assert(file && "Cant open map config, callers responsibility to check");
 
 	Json jsonData = Json::parse(file, nullptr, true, true);
-	sceneryIDs.reserve(jsonData["objects"].size());
+	sceneryIDs = std::vector<vulkan::ID>(jsonData["objects"].size());
 
 	lightSourcePos = glm::vec3(jsonData["lightSource"][0], jsonData["lightSource"][1], jsonData["lightSource"][2]);
 
-	for (auto& obj : jsonData["objects"]) {
+	std::mutex vulkanMutex;
+	std::atomic<size_t> index = 0;
+	auto threadFunction = [&]() {
+		while (true) {
+			size_t i = index.fetch_add(1);
+			if (i >= jsonData["objects"].size())
+				return;
+			auto& obj = jsonData["objects"][i];
+			vulkan::Model3D::CreationTransform modelTransform{
+				.position = obj.contains("modelPosition")
+								? getVec3(obj["modelPosition"])
+								: glm::vec3(),
+				.scale = obj.contains("modelScale")
+							 ? getVec3(obj["modelScale"])
+							 : glm::vec3(1.0, 1.0, 1.0),
+				.rotation = obj.contains("modelRotation")
+								? getQuat(obj["modelRotation"])
+								: glm::quat(1, 0, 0, 0),
+				.color = obj.contains("modelColor")
+							 ? getVec4(obj["modelColor"])
+							 : glm::vec4()
+			};
 
-		vulkan::Model3D::CreationTransform modelTransform {
-			.position = obj.contains("modelPosition")
-							? getVec3(obj["modelPosition"])
-							: glm::vec3(),
-			.scale = obj.contains("modelScale")
-						 ? getVec3(obj["modelScale"])
-						 : glm::vec3(1.0, 1.0, 1.0),
-			.rotation = obj.contains("modelRotation")
-							? getQuat(obj["modelRotation"])
-							: glm::quat(1, 0, 0, 0),
-			.color = obj.contains("modelColor")
-						 ? getVec4(obj["modelColor"])
-						 : glm::vec4()
-		};
-
-		sceneryIDs.push_back(
-			vulkan::GameObjectContainer::Add(vulkan::GameObject{
+			sceneryIDs[i] = (vulkan::GameObjectContainer::Add(vulkan::GameObject{
 				.model = vulkan::ModelCache::loadModel(folderPath / obj["model"], modelTransform),
 				.position = glm::vec3(obj["position"][0], obj["position"][1], obj["position"][2]),
 				.orientation = glm::quat() }));
-	}
+		}
+	};
+
+	std::array<std::thread, 8> threads;
+	for (auto& thread : threads)
+		thread = std::thread(threadFunction);
+
+	for (auto& thread : threads)
+		thread.join();
 }
 
 void Map::unload() {

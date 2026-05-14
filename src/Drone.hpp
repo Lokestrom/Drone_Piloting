@@ -82,6 +82,6 @@ private:
 	glm::vec3 _angularMomentum;
 	float _mass;
 
-	std::unordered_map<unsigned int, Engines> _engines;
+	std::unordered_map<uint64_t, Engines> _engines;
 	DronePlugin _plugin;
 };

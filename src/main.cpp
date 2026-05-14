@@ -16,7 +16,7 @@ int main() {
 #ifdef WIN32
 #include <windows.h>
 
-int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow) {
+int APIENTRY WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 	main();
 }
 #endif

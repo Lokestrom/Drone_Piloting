@@ -9,16 +9,14 @@ public:
 	ImGuiWindow(std::string_view name, bool open) noexcept;
 	virtual ~ImGuiWindow() = default;
 
-	virtual void render();
-
+	void render();
 	bool isOpen() const noexcept { return _open; }
 	const std::string_view& getName() const noexcept { return _name; }
 
 	void open() noexcept { _open = true;  }
 
 protected:
-	void begin();
-	void end();
+	virtual void _render() = 0;
 
 private:
 

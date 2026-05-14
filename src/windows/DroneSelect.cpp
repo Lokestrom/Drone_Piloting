@@ -12,16 +12,12 @@ DroneSelectWindow::DroneSelectWindow() noexcept
 	, folder(ASSET_DIR "Drones/") {
 }
 
-void DroneSelectWindow::render() {
-	begin();
-
+void DroneSelectWindow::_render() {
 	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
 		if (entry.is_directory()) {
 			renderFolder(entry.path());
 		}
 	}
-
-	end();
 }
 
 void DroneSelectWindow::renderFolder(const std::filesystem::path& droneFolder) {

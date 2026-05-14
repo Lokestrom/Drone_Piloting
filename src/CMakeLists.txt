@@ -19,6 +19,12 @@ add_subdirectory(windows)
 add_subdirectory(gui)
 add_subdirectory(shaders)
 
+if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wall -Wextra -pedantic)
+elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options(/W4 /permissive-)
+endif()
+
 add_executable(app WIN32 ${cppFiles})
 target_link_libraries(app PUBLIC imgui external vulkanInterface guiInterface windows)
 target_include_directories(app PUBLIC ${CMAKE_SOURCE_DIR})

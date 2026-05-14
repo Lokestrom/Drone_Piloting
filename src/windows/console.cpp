@@ -31,28 +31,33 @@ ImColor toColor(glm::vec3 v) {
 
 void ConsoleWindow::print(const Console::Log& log) {
 	ImColor color{ 0, 0, 0 };
+	std::string prefix;
 	switch (log.type) {
-	case Console::Type::meassage:
+	case Console::Log::Type::message:
 		color = toColor(_messageColor.get());
+		prefix = "Message";
 		break;
-	case Console::Type::warning:
-	case Console::Type::debug:
+	case Console::Log::Type::warning:
 		color = toColor(_warningColor.get());
+		prefix = "Warning";
 		break;
-	case Console::Type::error:
+	case Console::Log::Type::debug:
+		color = toColor(_warningColor.get());
+		prefix = "Debug";
+		break;
+	case Console::Log::Type::error:
 		color = toColor(_errorColor.get());
+		prefix = "Error";
 		break;
 	default:
-		assert(false && "One log type is unaccounted for");
+		assert(false && "Log type is unaccounted for");
 	}
+	prefix += ": ";
 
-
-	ImGui::TextColored(color, log.what.c_str());
+	ImGui::TextColored(color, (prefix + log.what).c_str());
 }
 
-void ConsoleWindow::render() {
-	begin();
-
+void ConsoleWindow::_render() {
 	if (_showOld) {
 		for (size_t i = 0; i < _clearIndex; i++) {
 			print(Console::getLogs()[i]);
@@ -77,7 +82,4 @@ void ConsoleWindow::render() {
 
 		ImGui::EndPopup();
 	}
-
-
-	end();
 }
