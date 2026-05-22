@@ -67,6 +67,13 @@ public:
 
 	bool hasSettings() const noexcept { return _plugin.getSettings != nullptr; }
 	SettingsBuffer* getSettings() const noexcept { return _plugin.getSettings(); }
+	
+	bool hasTarget() const noexcept { return _plugin.getTargetPosition != nullptr; }
+	glm::vec3 getTarget() const noexcept { 
+		glm::vec3 target;
+		_plugin.getTargetPosition(&target.x);
+		return target; 
+	}
 
 private:
 	void load(std::filesystem::path folderPath);

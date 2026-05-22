@@ -25,6 +25,6 @@ elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(/W4 /permissive-)
 endif()
 
-add_executable(app WIN32 ${cppFiles})
+add_executable(app ${cppFiles})
 target_link_libraries(app PUBLIC imgui external vulkanInterface guiInterface windows)
 target_include_directories(app PUBLIC ${CMAKE_SOURCE_DIR})

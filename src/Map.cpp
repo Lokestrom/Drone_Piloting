@@ -3,26 +3,9 @@
 #include <json.hpp>
 #include <fstream>
 #include <thread>
+#include "importJSONData.hpp"
 
 using Json = nlohmann::json;
-
-static glm::vec3 getVec3(const Json& jsonObj) {
-	return glm::vec3(jsonObj[0], jsonObj[1], jsonObj[2]);
-}
-static glm::quat getQuat(const Json& jsonObj) {
-	return glm::quat(glm::vec3(
-		glm::radians(static_cast<float>(jsonObj[0])),
-		glm::radians(static_cast<float>(jsonObj[1])),
-		glm::radians(static_cast<float>(jsonObj[2]))));
-}
-static glm::vec4 getVec4(const Json& jsonObj) {
-	return glm::vec4{
-		jsonObj[0],
-		jsonObj[1],
-		jsonObj[2],
-		jsonObj[3],
-	};
-}
 
 Map::Map(std::filesystem::path folderPath) {
 	load(folderPath);
@@ -41,7 +24,6 @@ void Map::load(std::filesystem::path folderPath) {
 
 	lightSourcePos = glm::vec3(jsonData["lightSource"][0], jsonData["lightSource"][1], jsonData["lightSource"][2]);
 
-	std::mutex vulkanMutex;
 	std::atomic<size_t> index = 0;
 	auto threadFunction = [&]() {
 		while (true) {
@@ -49,29 +31,18 @@ void Map::load(std::filesystem::path folderPath) {
 			if (i >= jsonData["objects"].size())
 				return;
 			auto& obj = jsonData["objects"][i];
-			vulkan::Model3D::CreationTransform modelTransform{
-				.position = obj.contains("modelPosition")
-								? getVec3(obj["modelPosition"])
-								: glm::vec3(),
-				.scale = obj.contains("modelScale")
-							 ? getVec3(obj["modelScale"])
-							 : glm::vec3(1.0, 1.0, 1.0),
-				.rotation = obj.contains("modelRotation")
-								? getQuat(obj["modelRotation"])
-								: glm::quat(1, 0, 0, 0),
-				.color = obj.contains("modelColor")
-							 ? getVec4(obj["modelColor"])
-							 : glm::vec4()
-			};
-
-			sceneryIDs[i] = (vulkan::GameObjectContainer::Add(vulkan::GameObject{
-				.model = vulkan::ModelCache::loadModel(folderPath / obj["model"], modelTransform),
-				.position = glm::vec3(obj["position"][0], obj["position"][1], obj["position"][2]),
-				.orientation = glm::quat() }));
+			sceneryIDs[i] = vulkan::GameObjectContainer::Add(vulkan::GameObject{
+				vulkan::ModelCache::loadModel(folderPath / obj["model"]),
+				getVec3(obj["position"]),
+				glm::quat(), glm::vec3(1.0),
+				obj.contains("modelPosition") ? getVec3(obj["modelPosition"]) : glm::vec3(),
+				obj.contains("modelRotation") ? getQuat(obj["modelRotation"]) : glm::quat(1, 0, 0, 0),
+				obj.contains("modelScale") ? getVec3(obj["modelScale"]) : glm::vec3(1.0, 1.0, 1.0)
+			}, true);
 		}
 	};
 
-	std::array<std::thread, 8> threads;
+	std::array<std::thread, 1> threads;
 	for (auto& thread : threads)
 		thread = std::thread(threadFunction);
 
@@ -80,8 +51,6 @@ void Map::load(std::filesystem::path folderPath) {
 }
 
 void Map::unload() {
-	for (auto& id : sceneryIDs) {
-		vulkan::GameObjectContainer::Remove(id);
-	}
+	vulkan::GameObjectContainer::Remove(sceneryIDs);
 	sceneryIDs.clear();
 }

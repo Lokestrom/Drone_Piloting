@@ -50,8 +50,9 @@ public:
 	static inline glm::vec2 vectorScale;
 
 private:
+	static inline void loop();
 	static void render();
-	//shuld delegate to somthing else like the inputhandler
+	//should delegate to something else like the inputhandler
 	static void updateMouseInput();
 
 private:

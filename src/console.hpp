@@ -2,6 +2,8 @@
 
 #include <string>
 #include <vector>
+#include <mutex>
+#include <iostream>
 
 class Console {
 public:
@@ -18,7 +20,10 @@ public:
 	};
 
 	static void log(Log::Type type, std::string what) {
+		std::lock_guard<std::mutex> lock(mutex);
 		_logs.emplace_back(type, what);
+		if (type != Log::Type::message)
+			std::cout << (int)type << ": " << what << "\n";
 	}
 
 	[[nodiscard]]
@@ -28,4 +33,5 @@ public:
 
 private: 
 	static inline std::vector<Log> _logs;
+	static inline std::mutex mutex;
 };

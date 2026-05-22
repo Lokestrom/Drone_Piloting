@@ -54,8 +54,8 @@ static float ATT_KI = .5f;
 static float RATE_KP = 2.f;
 static float RATE_KD = 3.f;
 
-static float MOVE_SPEED = 4.0f;
-static float ALTITUDE_SPEED = 3.0f;
+static float MOVE_SPEED = 20.0f;
+static float ALTITUDE_SPEED = 10.0f;
 
 static const char* g_settingNames[] = {
 	"POS_KP",
@@ -146,8 +146,8 @@ static void solveSystem(
 	Eigen::Matrix<float, 4, 6> AT = A.transpose();
 	Eigen::Matrix<float, 4, 4> ATA = AT * A;
 
-	constexpr float lambda = 0.001f;
-
+	constexpr float lambda = 0.000001f;
+	
 	for (int i = 0; i < 4; ++i)
 		ATA(i, i) += lambda;
 

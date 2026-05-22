@@ -7,7 +7,9 @@
   "objects": [
     {
       "model": "rainbowBrick.obj",
-      "position": [ 1, 1, 1 ]
+      "position": [ 1, 1, 1 ],
+      "modelScale": [ 1, 2, 1 ],
+      "modelRotation": [-90,0,0]
     },
     {
       "model": "rainbowBrick.obj",

@@ -64,28 +64,16 @@ void Drone::load(std::filesystem::path folderPath) {
 	_mass = jsonData["mass"];
 	_invInertia_B = glm::inverse(getMat3(jsonData["inertiaTensor"]));
 
-	vulkan::Model3D::CreationTransform modelTransform{
-		.position = jsonData.contains("modelPosition")
-						? getVec3(jsonData["modelPosition"])
-						: glm::vec3(),
-		.scale = jsonData.contains("modelScale")
-					 ? getVec3(jsonData["modelScale"])
-					 : glm::vec3(1, 1, 1),
-		.rotation = jsonData.contains("modelRotation")
-						? getQuat(jsonData["modelRotation"])
-						: glm::quat(),
-		.color = jsonData.contains("modelColor")
-					 ? getVec4(jsonData["modelColor"])
-					 : glm::vec4()
-	};
-
-	vulkan::GameObject obj{
-		.model = vulkan::ModelCache::loadModel(folderPath / jsonData["model"], modelTransform),
-		.position = glm::vec3(0.0),
-		.orientation = glm::quat(1, 0, 0, 0)
-	};
-
-	objectID = vulkan::GameObjectContainer::Add(std::move(obj));
+	objectID = vulkan::GameObjectContainer::Add(vulkan::GameObject{
+		vulkan::ModelCache::loadModel(folderPath / jsonData["model"]),
+		glm::vec3(2500.0, 0.0, -4500.0),
+		// glm::vec3(0,0,0),
+		glm::quat(1, 0, 0, 0),
+		glm::vec3(1.0),
+		jsonData.contains("modelPosition") ? getVec3(jsonData["modelPosition"]) : glm::vec3(),
+		jsonData.contains("modelRotation") ? getQuat(jsonData["modelRotation"]) : glm::quat(),
+		jsonData.contains("modelScale") ? getVec3(jsonData["modelScale"]) : glm::vec3(1.0)
+	});
 
 	for (const auto& engineData : jsonData["engines"]) {
 		Engines engine{
@@ -154,7 +142,7 @@ void Drone::update() {
 		::App::renderPoints.push_back({ targetPos, glm::vec4(1, 1, 0, 1) });
 	}
 
-	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0, -10.0, 0.0));
+	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0, -9.81, 0.0));
 	glm::vec3 torque = glm::vec3(0.0, 0.0, 0.0);
 
 	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces), glm::vec4(0, 1, 0, 1) });
@@ -179,14 +167,14 @@ void Drone::update() {
 	}
 	
 	forces = glm::rotate(getOrientation(), forces);
-	//forces -= (glm::length(_velocity) * _velocity) / 10.0f; // resistance
+	//forces -= (glm::length(_velocity) * _velocity) / 10.0f;
 	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f, glm::vec4(0, 0, 1, 1) });
 
 	obj.position += _velocity * (float)App::getDeltaTime();
 	_velocity += (forces / _mass) * (float)App::getDeltaTime();
 
 	_angularMomentum += torque * (float)App::getDeltaTime();
-	//_angularMomentum -= (glm::length(_angularMomentum) * _angularMomentum) / 10.0f; // angular resistance
+	//_angularMomentum -= (glm::length(_angularMomentum) * _angularMomentum) / 10.0f;
 
 	angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
 
