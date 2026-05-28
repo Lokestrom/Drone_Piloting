@@ -1,8 +1,6 @@
 # FreeCAD v1.1 build0 Arch module
 # https://www.freecad.org
-mtllib testDrone1.mtl
 o Body
-usemtl color_bac21c
 v 677.818542 877.814453 100.0
 v 16.986246 216.982407 98.546776
 v 11.361531 211.357697 99.352478

@@ -92,11 +92,13 @@ void App::startup() {
 	player = std::make_unique<Player>();
 	try {
 		player->SwapDrone(ASSET_DIR "drones/testDrone");
-		map.load(ASSET_DIR "maps/TestMap");
 	}
 	catch (std::exception& e) {
-		Console::log(Console::Log::Type::error, std::string("Failed to load default drone or map with: ") + e.what());
+		Console::log(Console::Log::Type::error, std::string("Failed to load default drone with: ") + e.what());
 	}
+	bool mapLoaded = map.load(ASSET_DIR "maps/TestMap");
+	(void)mapLoaded; // TODO: handle map loading failure
+	assert(mapLoaded && "Failed to load map");
 	vectorScale = glm::vec2(0.3, 0.1);
 	gui::App::startup();
 	setupWindows();
@@ -135,6 +137,10 @@ void App::updateMouseInput() {
 	if (!gui::App::enabled) {
 		glfwSetCursorPos(window, (double)width / 2.0, (double)height / 2.0);
 		InputEventHandler::mouseDelta = mousePos - glm::vec<2, double>{ (double)width / 2.0, (double)height / 2.0 };
+		if (std::abs(InputEventHandler::mouseDelta.x) < 1)
+			InputEventHandler::mouseDelta.x = 0;
+		if (std::abs(InputEventHandler::mouseDelta.y) < 1)
+			InputEventHandler::mouseDelta.y = 0;
 	}
 	else {
 		InputEventHandler::mouseDelta = InputEventHandler::lastMousePos - mousePos;

@@ -66,8 +66,8 @@ void Drone::load(std::filesystem::path folderPath) {
 
 	objectID = vulkan::GameObjectContainer::Add(vulkan::GameObject{
 		vulkan::ModelCache::loadModel(folderPath / jsonData["model"]),
-		glm::vec3(2500.0, 0.0, -4500.0),
-		// glm::vec3(0,0,0),
+		// glm::vec3(2500.0, 0.0, -4500.0),
+		glm::vec3(0,0,0),
 		glm::quat(1, 0, 0, 0),
 		glm::vec3(1.0),
 		jsonData.contains("modelPosition") ? getVec3(jsonData["modelPosition"]) : glm::vec3(),

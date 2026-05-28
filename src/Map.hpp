@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rendering/gameObject.hpp"
+#include "importJSONData.hpp"
 
 #include <filesystem>
 
@@ -17,17 +18,18 @@ public:
 
 	Map(Map&&) noexcept = default;
 	Map& operator=(Map&&) noexcept = default;
-
-	Map(std::filesystem::path folderPath);
-
 	~Map() noexcept;
 
-	void load(std::filesystem::path folderPath);
+	[[nodiscard]]
+	bool load(std::filesystem::path folderPath);
 	void unload();
 
 	const glm::vec3& getLightSourcePos() const noexcept { return lightSourcePos; }
-
 private:
+	// prints every error it can find before returning if it is valid or not
+	bool verifyMapFolder(std::filesystem::path folderPath) const;
+	bool verifyConfigFile(Json jsonData, std::filesystem::path folderPath) const;
+
 	std::vector<vulkan::ID> sceneryIDs;
 	glm::vec3 lightSourcePos = glm::vec3(0,0,0);
 };

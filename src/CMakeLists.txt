@@ -17,7 +17,7 @@ file(GLOB cppFiles
 add_subdirectory(rendering)
 add_subdirectory(windows)
 add_subdirectory(gui)
-add_subdirectory(shaders)
+add_subdirectory(rendering/shaders)
 
 if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -pedantic)

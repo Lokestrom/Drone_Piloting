@@ -1,8 +1,6 @@
 # FreeCAD v1.1 build0 Arch module
 # https://www.freecad.org
-mtllib vectorArrow.mtl
 o Body
-usemtl color_cccccc
 v 0.1 0.0 0.0
 v 0.097094 0.7 0.023932
 v 0.097094 0.0 0.023932

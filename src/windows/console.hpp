@@ -22,6 +22,9 @@ private:
 private:
 	static inline size_t _clearIndex = 0;
 	bool _showOld;
+	bool _showMessages = true;
+	bool _showWarnings = true;
+	bool _showErrors = true;
 	settings::ValueHandle<glm::vec3> _messageColor;
 	settings::ValueHandle<glm::vec3> _warningColor;
 	settings::ValueHandle<glm::vec3> _errorColor;

@@ -23,7 +23,7 @@ ConsoleWindow::ConsoleWindow() noexcept
 { }
 
 namespace {
-ImColor toColor(glm::vec3 v) {
+ImColor toColor(glm::vec3 v) noexcept {
 	return ImColor{ v.x, v.y, v.z };
 }
 
@@ -34,10 +34,14 @@ void ConsoleWindow::print(const Console::Log& log) {
 	std::string prefix;
 	switch (log.type) {
 	case Console::Log::Type::message:
+		if (!_showMessages)
+			return;
 		color = toColor(_messageColor.get());
 		prefix = "Message";
 		break;
 	case Console::Log::Type::warning:
+		if (!_showWarnings)
+			return;
 		color = toColor(_warningColor.get());
 		prefix = "Warning";
 		break;
@@ -46,6 +50,8 @@ void ConsoleWindow::print(const Console::Log& log) {
 		prefix = "Debug";
 		break;
 	case Console::Log::Type::error:
+		if (!_showErrors)
+			return;
 		color = toColor(_errorColor.get());
 		prefix = "Error";
 		break;
@@ -76,10 +82,18 @@ void ConsoleWindow::_render() {
 			_clearIndex = Console::getLogs().size();
 		}
 
-		if (ImGui::MenuItem("Show Old")) {
+		if (ImGui::MenuItem("Show Old", nullptr, _showOld)) {
 			_showOld = !_showOld;
 		}
-
+		if (ImGui::MenuItem("Show Messages", nullptr, _showMessages)) {
+			_showMessages = !_showMessages;
+		}
+		if (ImGui::MenuItem("Show Warnings", nullptr, _showWarnings)) {
+			_showWarnings = !_showWarnings;
+		}
+		if (ImGui::MenuItem("Show Errors", nullptr, _showErrors)) {
+			_showErrors = !_showErrors;
+		}
 		ImGui::EndPopup();
 	}
 }
