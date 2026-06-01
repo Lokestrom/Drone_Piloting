@@ -10,7 +10,7 @@ int main() {
 		createSettings();
 
 		if constexpr (benchmark::enabled) {
-			benchmark::createFile("Trondheim map2");
+			benchmark::createFile("no_instancing_draws");
 
 			benchmark::file << "Benchmarking with " << benchmark::runs << " runs\n";
 
@@ -47,9 +47,9 @@ int main() {
 		}
 		else {
 			App::startup();
-
+			
 			App::run();
-
+			
 			App::shutdown();
 		}
 	}

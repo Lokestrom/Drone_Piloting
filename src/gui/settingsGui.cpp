@@ -20,6 +20,6 @@ void slider(const std::string& name, double& value, const double& min, const dou
 }
 
 void color(const std::string& name, glm::vec3& color) {
-	ImGui::ColorPicker3(name.c_str(), &color.x);
+	ImGui::ColorEdit3(name.c_str(), &color.x, ImGuiColorEditFlags_NoInputs);
 }
 }

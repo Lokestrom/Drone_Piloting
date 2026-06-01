@@ -61,8 +61,18 @@ void App::render(ImGui_ImplVulkanH_Window* wd) {
 
 	static_cast<vk::CommandBuffer>(fd->CommandBuffer).endRenderPass();
 }
+void App::openWindow(const std::string& name) {
+	enabled = true;
+	if (inMenu) {
+		addToMenu(name);
+	}
+	else {
+		addToOverlay(name);
+	}
+}
 
-void App::addToOverlay(std::string name) {
+
+void App::addToOverlay(const std::string& name) {
 	if (std::ranges::find_if(overlayWindows, [&](const ImGuiWindow* window) { return window->getName() == name; }) != overlayWindows.end()) {
 		ImGui::SetWindowFocus(name.c_str());
 		return;
@@ -73,7 +83,7 @@ void App::addToOverlay(std::string name) {
 	overlayWindows.push_back(window->get());
 }
 
-void App::addToMenu(std::string name) {
+void App::addToMenu(const std::string& name) {
 	if (std::ranges::find_if(menuWindows, [&](const ImGuiWindow* window) { return window->getName() == name; }) != menuWindows.end()) {
 		ImGui::SetWindowFocus(name.c_str());
 		return;

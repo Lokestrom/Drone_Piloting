@@ -1,33 +1,37 @@
-#include "../../../../src/API/DroneAPI.h"
+#define ENGINE_COUNT 6
+
+#include "../../../../src/API/helpers/PIDcontroler.hpp"
+
+DRONE_API void setup(const char* dronePath) {
+	PIDController::setup(dronePath);
+	float& moveSpeed = *PIDController::getSetting("MOVE_SPEED").value();
+	moveSpeed = 10.;
+	float& altitudeSpeed = *PIDController::getSetting("ALTITUDE_SPEED").value();
+	altitudeSpeed = 5.;
+	float& posKP = *PIDController::getSetting("POS_KP").value();
+	posKP = 1.;
+	float& posKI = *PIDController::getSetting("POS_KI").value();
+	posKI = 0.1;
+	float& velKP = *PIDController::getSetting("VEL_KP").value();
+	velKP = 1.;
+	float& velKI = *PIDController::getSetting("VEL_KI").value();
+	velKI = 0.2;
+	float& velKD = *PIDController::getSetting("VEL_KD").value();
+	velKD = 0.5;
+	float& attKP = *PIDController::getSetting("ATT_KP").value();
+	attKP = 5.;
+	float& attKI = *PIDController::getSetting("ATT_KI").value();
+	attKI = 0.1;
+	float& rateKP = *PIDController::getSetting("RATE_KP").value();
+	rateKP = 2.;
+	float& rateKD = *PIDController::getSetting("RATE_KD").value();
+	rateKD = 0.5;
+}
 
 DRONE_API void update(
 	const UserInput* input,
 	const DroneState* state,
+	const float dt,
 	CommandBuffer* outCommands) {
-	const float rotorForce = 20.0f;
-	float thrust = 0.0f;
-
-	if (input->keyW)
-		thrust += rotorForce;
-
-	if (input->keyS)
-		thrust -= rotorForce;
-
-	static EngineCommand commands[6];
-
-	commands[0].engineId = 0;
-	commands[0].thrust = thrust;
-	commands[1].engineId = 1;
-	commands[1].thrust = thrust;
-	commands[2].engineId = 2;
-	commands[2].thrust = thrust;
-	commands[3].engineId = 3;
-	commands[3].thrust = thrust;
-	commands[4].engineId = 4;
-	commands[4].thrust = thrust;
-	commands[5].engineId = 5;
-	commands[5].thrust = thrust;
-
-	outCommands->commands = commands;
-	outCommands->count = 6;
+	PIDController::update(input, state, dt, outCommands);
 }

@@ -1,6 +1,7 @@
 #include "DroneSelect.hpp"
 
 #include "../App.hpp"
+#include "../structures/fileExplorer.hpp"
 
 #include <fstream>
 #include <json.hpp>
@@ -13,10 +14,25 @@ DroneSelectWindow::DroneSelectWindow() noexcept
 }
 
 void DroneSelectWindow::_render() {
-	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
-		if (entry.is_directory()) {
-			renderFolder(entry.path());
+#ifdef _WIN32
+	if (ImGui::Button("Find drone")) {
+		std::filesystem::path newFolder = OpenFileExplorer();
+		if (!newFolder.empty()) {
+			App::swapDrone(newFolder);
 		}
+	}
+#endif
+	for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+		if (!entry.is_directory()) {
+			continue;
+		}
+
+		const auto configPath = entry.path() / "config.json";
+		if (!std::filesystem::exists(configPath)) {
+			continue;
+		}
+
+		renderFolder(entry.path());
 	}
 }
 

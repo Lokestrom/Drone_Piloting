@@ -7,7 +7,7 @@
 
 #include "rendering/gameObject.hpp"
 #include "API/DroneAPI.h"
-#include "sharedLib.hpp"
+#include "structures/sharedLib.hpp"
 
 struct Error {
 public:		

@@ -68,9 +68,9 @@ void ConsoleWindow::_render() {
 		for (size_t i = 0; i < _clearIndex; i++) {
 			print(Console::getLogs()[i]);
 		}
-		ImGui::Text("Old");
+		ImGui::TextUnformatted("Old");
 		ImGui::Separator();
-		ImGui::Text("New");
+		ImGui::TextUnformatted("New");
 	}
 
 	for (size_t i = _clearIndex; i < Console::getLogs().size(); i++) {

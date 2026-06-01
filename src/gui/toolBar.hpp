@@ -5,8 +5,6 @@
 namespace gui {
 
 void renderToolBar() {
-	// should store a list of names
-
 	auto addFunction = App::inMenu ? App::addToMenu : App::addToOverlay;
 
 	if (ImGui::BeginMainMenuBar()) {
@@ -16,6 +14,9 @@ void renderToolBar() {
 			}
 			if (ImGui::MenuItem("Drone select")) {
 				addFunction("Drone select");
+			}
+			if (ImGui::MenuItem("Map select")) {
+				addFunction("Map select");
 			}
 			if (ImGui::MenuItem("Settings")) {
 				addFunction("Settings");

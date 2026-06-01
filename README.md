@@ -27,16 +27,15 @@ build/src/<config>/app # Debug or Release
 
 ## Using
 Control using W, A, S, D, left shift, and space, and ESC for menu, TAB for overlay, F for freecam, T for orbit cam. <br>
-Only the testDrone has a proper PID controller.<br>
-Drones and maps stored in assets. Currently only drones can be loaded dynamically but map has to be 
-changed in code or in the original folder.
+Drones and maps stored in assets, there is 2 drones and one map there.
+The map and the test drone is loaded on startup but you can change the drone or map 
+by clicking on view in the overlay or menu and opening the drone or map selection windows.
 
 Further documentation is in the `documentation` folder
 
 ## Plans:
 Current plans for what i want to implement
 ### Core:
-* Dynamic loading of maps
 * Custom forces
 * Collisions
 * Multi drone support

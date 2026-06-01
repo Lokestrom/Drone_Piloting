@@ -34,6 +34,10 @@ public:
 	}
 
 	static void swapDrone(std::filesystem::path folderPath) { player->SwapDrone(folderPath); }
+	static bool swapMap(std::filesystem::path folderPath) {
+		map.unload();
+		return map.load(folderPath);
+	}
 
 	struct RenderVector {
 		glm::vec3 position;

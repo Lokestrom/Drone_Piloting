@@ -1,21 +1,33 @@
 # Drones
 
-## Flying
-One can fly the drone using W, A, S, D, left shift, and space. <br>
-See Future plans section at the bottom for plans on adding more input options.
+## Using
+Pilot the drone using W, A, S, D, left shift, and space. <br>
+See [Future plans](#future-plans) at the bottom for plans on adding more input options.
+
+Open the info window to see more info like position, orientation and mode. 
+Here they can also be edited, and setting can also be changed.
+If you edit rotation be aware that it has to be a unit quaternion also, 
+it makes life a lot easier if you do it in the menu.
+
+To change drone open the drone select window.
+From here all the drones in the `asset/Drones` folder that have a parseable `config.json`, 
+with a valid `name` field will show up. 
+Or click the find drone button(only available on windows) to open the 
+file explorer and find any folder on disk.
+
+Tips: for large models select them in the menu to prevent breaking the simulation.
 
 ## Custom drones
 This is where the real fun starts, you can create your own drones by following these instructions. <br>
 Note that the code uses SI units, so make sure to scale your models accordingly. <br>
 
-Create a folder in `assets/drones` that must contain:
+Create a folder that must contain:
 * `config.json`: The properties of the drone, such as mass, max thrust, etc.
-* `model.obj`: The 3D model of the drone, must be a Wavefront .obj file.
-* `Debug/control.dll`: The control code for the drone, this is a dynamic library that contains the logic for controlling the drone.
+* `model.obj`: The 3D model of the drone, must be a .obj file.
+* `Debug/control.dll` and `Release/control.dll`: The control code for the drone, this is a dynamic library that contains the logic for controlling the drone.
 
 Optionally you can add a README.md file or any other useful files to the folder. <br>
-
-
+To make it show automatically in the selection window put it in `assets/Drones`.
 
 ### Config.json
 The `config.json` file contains the properties of the drone, these include:
@@ -71,12 +83,22 @@ The `setup` function runs in the drone constructor, for now it only resives the 
 The `getTargetPosition` function must output a 3d position that can be toataly dictaded by the user but it is displayed as a point in the renderer. <br>
 The `getSettings` funcion outputs the settings of the drone that can be tweeked by the user.
 
+### Errors
+When loading the drone it will fail silently and may crash the app if configured wrong.
+As opposed to a map witch has proper error handeling.
+
 ## Future plans
 
 #### Input
 Currently only W, A, S, D, left shift, and space are supported for user input, 
 but in the future I plan to make it more flexible and even support other types of input.
 
-#### Backward compatibility
+### Backward compatibility
 I don't plan on keeping any backward compatibility. 
 At some point i may begin adding a change log and deprecation warnings.
+
+## License
+When creating a drone it is your unique creation I have no rights over it,
+except if you use any code that is not form the `src/API/DroneAPI.h` file  
+in the creation of your code as this makes your code subject to the 
+license in the `LICENSE` file.

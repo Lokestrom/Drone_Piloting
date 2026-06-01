@@ -220,7 +220,7 @@ vulkan::GameObject& Drone::getObject() const noexcept {
 }
 
 DroneState Drone::getState() const noexcept {
-	auto obj = getObject();
+	auto& obj = getObject();
 
 	glm::mat3 R = glm::mat3_cast(getOrientation());
 	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);

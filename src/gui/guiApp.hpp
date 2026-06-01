@@ -21,9 +21,12 @@ public:
 	template<typename T>
 		requires std::is_base_of_v<ImGuiWindow, T>
 	static void addWindow();
+
+	// forces gui enabled
+	static void openWindow(const std::string& name);
 	
-	static void addToOverlay(std::string name);
-	static void addToMenu(std::string name);
+	static void addToOverlay(const std::string& name);
+	static void addToMenu(const std::string& name);
 
 	static inline bool enabled;
 	static inline bool inMenu;
@@ -34,7 +37,6 @@ private:
 	static inline std::vector<std::unique_ptr<ImGuiWindow>> windows;
 	static inline std::vector<ImGuiWindow*> overlayWindows;
 	static inline std::vector<ImGuiWindow*> menuWindows;
-
 };
 
 template <typename T>

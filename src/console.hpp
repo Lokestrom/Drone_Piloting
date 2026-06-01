@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <format>
 
 class Console {
 public:
@@ -34,13 +35,16 @@ public:
 	}
 
 	static void createConsoleLogDumpFile(std::string_view why) {
-		std::lock_guard<std::mutex> lock(mutex);
+		auto now = std::chrono::system_clock::now();
+		auto now_s = std::chrono::floor<std::chrono::seconds>(now);
+
 		std::string filename = "drone_piloting_console_dump_" + 
-			std::to_string(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())) + ".txt";
+			std::to_string(std::chrono::system_clock::to_time_t(now)) + ".txt";
 		std::ofstream file(filename);
+		assert(file && "Failed to create console log dump file");
 
 		file << "Console log dump from drone piloting.\nReason: " << why << "\n\n"
-			<< "At: " << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) << "\n\n"
+			<< "At: " << std::format("{:%Y.%m.%d, %H:%M:%S}", now_s) << "\n\n"
 			<< "This file contains all logs that were logged to the console, and is useful for debugging crashes and other issues. It is recommended to include this file when reporting issues.\n\n"
 			<< "Logs:\n";
 
@@ -48,6 +52,7 @@ public:
 			file << toString(log.type) << ": " << log.what << "\n";
 		}
 		file.flush();
+		file.close();
 	}
 
 private: 

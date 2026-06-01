@@ -1,12 +1,13 @@
 #pragma once
 
-#include "helpers.hpp"
-
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <functional>
+#include <atomic>
+#include <algorithm>
+#include <cassert>
 
-namespace vulkan {
 template <typename PoolState, typename ThreadState>
 class TreadWorkPool {
 public:
@@ -115,5 +116,4 @@ inline TreadWorkPool<PoolState, ThreadState>::~TreadWorkPool() {
 		return;
 	}
 	waitForWork();
-}
 }

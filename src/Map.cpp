@@ -4,7 +4,7 @@
 #include <fstream>
 #include <thread>
 
-#include "rendering/treadWorkPool.hpp"
+#include "structures/treadWorkPool.hpp"
 
 #include "console.hpp"
 
@@ -97,7 +97,7 @@ bool Map::load(std::filesystem::path folderPath) {
 
 	lightSourcePos = glm::vec3(jsonData["lightSource"][0], jsonData["lightSource"][1], jsonData["lightSource"][2]);
 
-	vulkan::TreadWorkPool<PoolState, ThreadState> threadPool(8, 
+	TreadWorkPool<PoolState, ThreadState> threadPool(8, 
 		PoolState{ jsonData, folderPath, 0, sceneryIDs }, 
 		updateFunction, startUpFunction, cleanUpFunction);
 
@@ -214,6 +214,7 @@ bool Map::verifyConfigFile(Json jsonData, std::filesystem::path folderPath) cons
 			Console::log(Console::Log::Type::error, "Object " + std::to_string(index) + ": 'modelScale' field is not a vec3");
 			errorHit();
 		}
+		index++;
 	}
 
 	if (!valid) {

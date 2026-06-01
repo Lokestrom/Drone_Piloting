@@ -101,7 +101,7 @@ public:
 		return *this;
 	}
 
-	operator T() const noexcept { return _value; }
+	operator T&() noexcept { return _value; }
 
 	const std::string& name() const noexcept { return _name; }
 	void reset() noexcept(assignNoexcept) { _value = _defaultValue; }
