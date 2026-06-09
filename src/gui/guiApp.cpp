@@ -44,6 +44,10 @@ void App::generateWindows() {
 	ImGui::Render();
 }
 
+void App::shutdown() {
+	windows.clear();
+}
+
 void App::render(ImGui_ImplVulkanH_Window* wd) {
 	
 	ImGui_ImplVulkanH_Frame* fd = &wd->Frames[wd->FrameIndex];

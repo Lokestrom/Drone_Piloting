@@ -73,7 +73,7 @@ void MapSelectWindow::renderFolder(const std::filesystem::path& mapFolder) {
 		return;
 	}
 
-	if (ImGui::CollapsingHeader((jsonData["name"] + "##" + mapFolder.string()).c_str())) {
+	if (ImGui::CollapsingHeader((std::string(jsonData["name"]) + "##" + mapFolder.string()).c_str())) {
 		if (jsonData.contains("description") &&
 			jsonData["description"].is_string()) {
 			ImGui::TextUnformatted(

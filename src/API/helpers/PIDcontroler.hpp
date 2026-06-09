@@ -99,6 +99,24 @@ static std::vector<float*> g_settingValues = {
 	&ALTITUDE_SPEED
 };
 
+namespace InputHandles {
+using InputType = UserInputHandler::Handle::Type;
+static UserInputHandler::HandleButton forward{ "Forward" };
+static UserInputHandler::HandleButton backward{ "Backward" };
+static UserInputHandler::HandleButton right{ "Right" };
+static UserInputHandler::HandleButton left{ "Left" };
+static UserInputHandler::HandleButton up{ "Up" };
+static UserInputHandler::HandleButton down{ "Down" };
+}
+static UserInputHandler g_inputHandler({ 
+	&InputHandles::forward,
+	&InputHandles::backward,
+	&InputHandles::right,
+	&InputHandles::left,
+	&InputHandles::up,
+	&InputHandles::down
+});
+
 static SettingsBuffer g_settings;
 
 DRONE_API SettingsBuffer* getSettings() {
@@ -176,16 +194,16 @@ static void updateTargetPosition(
 	float dt) {
 	glm::vec3 move(0);
 
-	if (input->keyW)
+	if (InputHandles::forward.getValue() == ButtonStateCpp::Pressed || InputHandles::forward.getValue() == ButtonStateCpp::Down)
 		move.z -= 1.0f;
 
-	if (input->keyS)
+	if (InputHandles::backward.getValue() == ButtonStateCpp::Pressed || InputHandles::backward.getValue() == ButtonStateCpp::Down)
 		move.z += 1.0f;
 
-	if (input->keyA)
+	if (InputHandles::left.getValue() == ButtonStateCpp::Pressed || InputHandles::left.getValue() == ButtonStateCpp::Down)
 		move.x -= 1.0f;
 
-	if (input->keyD)
+	if (InputHandles::right.getValue() == ButtonStateCpp::Pressed || InputHandles::right.getValue() == ButtonStateCpp::Down)
 		move.x += 1.0f;
 
 	if (glm::length(move) > 0.0f)
@@ -195,10 +213,10 @@ static void updateTargetPosition(
 
 	g_targetPosition += move * dt;
 
-	if (input->keySpace)
+	if (InputHandles::up.getValue() == ButtonStateCpp::Pressed || InputHandles::up.getValue() == ButtonStateCpp::Down)
 		g_targetPosition.y += ALTITUDE_SPEED * dt;
 
-	if (input->keyShift)
+	if (InputHandles::down.getValue() == ButtonStateCpp::Pressed || InputHandles::down.getValue() == ButtonStateCpp::Down)
 		g_targetPosition.y -= ALTITUDE_SPEED * dt;
 
 
@@ -248,6 +266,14 @@ void update(
 	const DroneState* state,
 	const float dt,
 	CommandBuffer* outCommands) {
+
+	assert(input && "The input is nullptr");
+	assert(state && "The state is nullptr");
+	assert(dt > 0 && "The dt is not grater than 0");
+	assert(outCommands && "The out commands in nullptr");
+
+	g_inputHandler.update(*input);
+
 	glm::vec3 position = toVec(state->position);
 	glm::vec3 velocity = toVec(state->velocity);
 	glm::quat orientation = toQuat(state->orientation);

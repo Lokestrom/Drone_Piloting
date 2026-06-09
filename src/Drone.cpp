@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 #include <json.hpp>
 #include <glm/glm.hpp>
@@ -10,6 +11,7 @@
 #include "App.hpp"
 #include "Settings.hpp"
 #include "importJSONData.hpp"
+#include "gui/settingsGui.hpp"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -25,14 +27,38 @@
 
 using Json = nlohmann::json;
 
-struct droneControls {
-	static const ImGuiKey moveForward = ImGuiKey_W,
-						  moveBackward = ImGuiKey_S,
-						  moveLeft = ImGuiKey_A,
-						  moveRight = ImGuiKey_D,
-						  moveUp = ImGuiKey_Space,
-						  moveDown = ImGuiKey_LeftShift;
-};
+namespace {
+[[nodiscard]]
+ImGuiKey getKeyFromName(std::string name) {
+	assert(!name.empty() && "input name is empty");
+	name[0] = (char)std::toupper(name[0]);
+	for (size_t i = 0; i < name.length() - 1; i++) {
+		if (name[i] == ' ') {
+			name.erase(i, 1);
+			name[i] = (char)std::toupper(name[i]);
+		}
+	}
+	for (int i = ImGuiKey_NamedKey_BEGIN; i < ImGuiKey_NamedKey_END; i++) {
+		if (ImGui::GetKeyName(static_cast<ImGuiKey>(i)) == name) {
+			return static_cast<ImGuiKey>(i);
+		}
+	}
+	assert(false && "Cant find the key");
+	return ImGuiKey_None;
+}
+
+[[nodiscard]]
+ButtonState getKeyButtonState(ImGuiKey key) {
+	if (ImGui::IsKeyPressed(key, true))
+		return ButtonState::Pressed;
+	if (ImGui::IsKeyReleased(key))
+		return ButtonState::Released;
+	if (ImGui::IsKeyDown(key))
+		return ButtonState::Down;
+
+	return ButtonState::Up;
+}
+}
 
 Drone::Drone(std::filesystem::path folderPath)
 	: _angularMomentum(0.0f)
@@ -41,7 +67,7 @@ Drone::Drone(std::filesystem::path folderPath)
 	load(folderPath);
 }
 
-Drone::Drone(std::filesystem::path folderPath, DroneState state) {
+Drone::Drone(std::filesystem::path folderPath, API::DroneState state) {
 	load(folderPath);
 
 	getPosition() = glm::vec3{ state.position[0], state.position[1], state.position[2] };
@@ -84,35 +110,50 @@ void Drone::load(std::filesystem::path folderPath) {
 		};
 		_engines[engine.id] = engine;
 	}
+
+	auto& inputSettings = _settings.newCategory("Inputs");
+	_inputButtonStates = std::vector<ButtonState>();
+	_inputButtonStates.reserve(jsonData["inputs"].size());
+	_inputType = std::vector<API::InputType>(jsonData["inputs"].size(), API::InputType::Button);
+
+	_inputNames.reserve(jsonData["inputs"].size());
+	_inputNamePtrs.reserve(jsonData["inputs"].size());
+	for (const auto& inputData : jsonData["inputs"]) {
+		std::string name = inputData["name"];
+		_inputNames.push_back(name);
+		_inputNamePtrs.push_back(_inputNames.back().c_str());
+		inputSettings.emplace<settings::Value<ImGuiKey>>(name, getKeyFromName(inputData["defaultKeyboardKey"]), settings::Value<ImGuiKey>::setFunctionT(gui::keyBindButton));
+	}
+
+
+	_input.names = _inputNamePtrs.data();
+	_input.buttonPressed = reinterpret_cast<API::ButtonState*>(_inputButtonStates.data());
+	_input.buttonCount = jsonData["inputs"].size();
+	_input.axisCount = 0;
+	_input.types = _inputType.data();
+
+
 	_plugin = {};
 #ifdef _DEBUG
 	_plugin.lib = SharedLib(folderPath / "Debug/control");
 #else
 	_plugin.lib = SharedLib(folderPath / "Release/control");
 #endif
-	_plugin.update = static_cast<UpdateFn>(_plugin.lib.getFunction("update"));
+	_plugin.update = static_cast<API::UpdateFn>(_plugin.lib.getFunction("update"));
 	if (_plugin.lib.hasFunction("getTargetPosition")) {
-		_plugin.getTargetPosition = static_cast<GetTargetPositionFn>(_plugin.lib.getFunction("getTargetPosition"));
+		_plugin.getTargetPosition = static_cast<API::GetTargetPositionFn>(_plugin.lib.getFunction("getTargetPosition"));
 	}
 	if (_plugin.lib.hasFunction("setup")) {
-		static_cast<SetupFn>(_plugin.lib.getFunction("setup"))(folderPath.string().c_str());
+		static_cast<API::SetupFn>(_plugin.lib.getFunction("setup"))(folderPath.string().c_str());
 	}
 	if (_plugin.lib.hasFunction("getSettings")) {
-		_plugin.getSettings = static_cast<GetSettingsFn>(_plugin.lib.getFunction("getSettings"));
+		_plugin.getSettings = static_cast<API::GetSettingsFn>(_plugin.lib.getFunction("getSettings"));
 	}
 }
 
 Drone::~Drone() noexcept {
 	vulkan::GameObjectContainer::Remove(objectID);
 }
-
-//static bool isnan(const glm::quat& q) noexcept {
-//	return std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z) || std::isnan(q.w);
-//}
-//
-//static bool isnan(const glm::vec3& v) noexcept {
-//	return std::isnan(v.x) || std::isnan(v.y) || std::isnan(v.z);
-//}
 
 void Drone::update() {
 	auto& obj = vulkan::GameObjectContainer::get(objectID);
@@ -121,21 +162,14 @@ void Drone::update() {
 	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
 	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
 
-	UserInput input{
-		.keyW = ImGui::IsKeyDown(droneControls::moveForward),
-		.keyS = ImGui::IsKeyDown(droneControls::moveBackward),
-		.keyA = ImGui::IsKeyDown(droneControls::moveLeft),
-		.keyD = ImGui::IsKeyDown(droneControls::moveRight),
-		.keySpace = ImGui::IsKeyDown(droneControls::moveUp),
-		.keyShift = ImGui::IsKeyDown(droneControls::moveDown)
-	};
-	DroneState state = getState();
-	CommandBuffer commands{
+	API::DroneState state = getState();
+	API::CommandBuffer commands{
 		.commands = nullptr,
 		.count = 0
 	};
 
-	_plugin.update(&input, &state, (float)App::getDeltaTime(), &commands);
+	populateInput();
+	_plugin.update(&_input, &state, (float)App::getDeltaTime(), &commands);
 	if (_plugin.getTargetPosition) {
 		glm::vec3 targetPos;
 		_plugin.getTargetPosition(&targetPos.x);
@@ -219,17 +253,25 @@ vulkan::GameObject& Drone::getObject() const noexcept {
 	return vulkan::GameObjectContainer::get(objectID);
 }
 
-DroneState Drone::getState() const noexcept {
+API::DroneState Drone::getState() const noexcept {
 	auto& obj = getObject();
 
 	glm::mat3 R = glm::mat3_cast(getOrientation());
 	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
 	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
 
-	return DroneState{
+	return API::DroneState{
 		.position = { obj.position.x, obj.position.y, obj.position.z },
 		.velocity = { _velocity.x, _velocity.y, _velocity.z },
 		.orientation = { obj.orientation.w, obj.orientation.x, obj.orientation.y, obj.orientation.z },
 		.angularVelocity = { angularVelocity.x, angularVelocity.y, angularVelocity.z }
 	};
+}
+
+void Drone::populateInput() noexcept {
+	_inputButtonStates.clear();
+	for (const auto& val : _settings.get("Inputs").getValues()) {
+		auto key = static_cast<settings::Value<ImGuiKey>*>(val.get())->getHandle().get();
+		_inputButtonStates.push_back(getKeyButtonState(key));
+	}
 }

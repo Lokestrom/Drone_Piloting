@@ -21,11 +21,14 @@ public:
 	void SwapDrone(std::filesystem::path folderPath);
 	void releaseDrone();
 
+	[[nodiscard]]
 	vulkan::UniformBufferObject getUBO() const noexcept;
 
 	void update(bool updateCamera);
 
+	[[nodiscard]]
 	vulkan::Camera& getCamera() noexcept { return _camera; }
+	[[nodiscard]]
 	std::optional<Drone>& getDrone() noexcept { return _drone; }
 
 private:

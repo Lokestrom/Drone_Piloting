@@ -6,8 +6,12 @@
 #include <glm/glm.hpp>
 
 #include "rendering/gameObject.hpp"
+namespace API {
 #include "API/DroneAPI.h"
+}
 #include "structures/sharedLib.hpp"
+#include "Input/InputEventHandler.hpp"
+#include "Settings.hpp"
 
 struct Error {
 public:		
@@ -31,10 +35,10 @@ private:
 
 struct DronePlugin {
 	SharedLib lib;
-	UpdateFn update;
+	API::UpdateFn update;
 
-	GetTargetPositionFn getTargetPosition;
-	GetSettingsFn getSettings;
+	API::GetTargetPositionFn getTargetPosition;
+	API::GetSettingsFn getSettings;
 };
 
 // have to separate it into 2 where one is just pure physics
@@ -49,36 +53,50 @@ public:
 	};
 
 	Drone(std::filesystem::path folderPath);
-	Drone(std::filesystem::path folderPath, DroneState state);
+	Drone(std::filesystem::path folderPath, API::DroneState state);
 	~Drone() noexcept;
 
 	void update();
 
+	[[nodiscard]]
 	glm::vec3& getPosition() noexcept;
+	[[nodiscard]]
 	const glm::vec3& getPosition() const noexcept;
 
+	[[nodiscard]]
 	glm::quat& getOrientation() noexcept;
+	[[nodiscard]]
 	const glm::quat& getOrientation() const noexcept;
 
+	[[nodiscard]]
 	glm::vec3& getVelocity() noexcept { return _velocity; }
+	[[nodiscard]]
 	glm::vec3& getRotationalVelocity() noexcept { return _angularMomentum; }
 
-	DroneState getState() const noexcept;
+	[[nodiscard]]
+	API::DroneState getState() const noexcept;
 
+	[[nodiscard]]
 	bool hasSettings() const noexcept { return _plugin.getSettings != nullptr; }
-	SettingsBuffer* getSettings() const noexcept { return _plugin.getSettings(); }
+	[[nodiscard]]
+	API::SettingsBuffer* getSettings() const noexcept { return _plugin.getSettings(); }
 	
+	[[nodiscard]]
 	bool hasTarget() const noexcept { return _plugin.getTargetPosition != nullptr; }
+	[[nodiscard]]
 	glm::vec3 getTarget() const noexcept { 
 		glm::vec3 target;
 		_plugin.getTargetPosition(&target.x);
 		return target; 
 	}
 
+	settings::Settings _settings;
 private:
 	void load(std::filesystem::path folderPath);
 
 	vulkan::GameObject& getObject() const noexcept;
+
+	void populateInput() noexcept;
 
 private:
 	vulkan::ID objectID;
@@ -91,4 +109,10 @@ private:
 
 	std::unordered_map<uint64_t, Engines> _engines;
 	DronePlugin _plugin;
+
+	API::UserInput _input;
+	std::vector<std::string> _inputNames;
+	std::vector<const char*> _inputNamePtrs;
+	std::vector<API::InputType> _inputType;
+	std::vector<ButtonState> _inputButtonStates;
 };

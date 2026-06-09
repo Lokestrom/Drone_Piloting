@@ -3,15 +3,19 @@
 #include "ImGui/imgui.h"
 
 #include <concepts>
+#include <type_traits>
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <algorithm>
 
+// TODO: Load from a file and save user preferences
 namespace settings {
 
 struct IValue {
 	virtual ~IValue() = default;
 	virtual void set() = 0;
+	virtual const std::string& name() const noexcept = 0;
 };
 
 namespace {
@@ -48,8 +52,13 @@ class ValueHandle;
 
 
 template <typename T>
-class Value : public IValue {
+	requires !std::is_pointer_v<std::remove_reference_t<T>> &&
+			!std::is_const_v<std::remove_reference_t<T>> 
+class Value : public IValue 
+{
 	friend class ValueHandle<T>;
+
+	using nonRefrenceT = std::remove_reference_t<T>;
 
 public:
 	using setFunctionT = void (*)(const std::string&, T&);
@@ -62,6 +71,15 @@ public:
 		, _setFunction(setFunction)
 		, _refCount(0) {}
 
+	Value(const std::string& name, T value, const nonRefrenceT& defaultValue, setFunctionT setFunction)
+		requires std::is_reference_v<T>
+		: _name(name)
+	, _value(value)
+	, _defaultValue(defaultValue)
+	, _setFunction(setFunction)
+	, _refCount(0) 
+	{}
+
 	virtual ~Value() {
 		assert(_refCount == 0 && "There is still references to this value");
 	};
@@ -71,40 +89,40 @@ public:
 	Value(Value&&) = delete;
 	Value& operator=(Value&&) = delete;
 
-	Value& operator=(const T& value) noexcept(assignNoexcept) {
+	Value& operator=(const nonRefrenceT& value) noexcept(assignNoexcept<nonRefrenceT>) {
 		_value = value;
 		return *this;
 	}
 
-	Value& operator+=(const T& value) noexcept(addAssignNoexcept<T>)
-		requires AddAssignable<T>
+	Value& operator+=(const nonRefrenceT& value) noexcept(addAssignNoexcept<nonRefrenceT>)
+		requires AddAssignable<nonRefrenceT>
 	{
 		_value += value;
 		return *this;
 	}
-	Value& operator-=(const T& value) noexcept(subAssignNoexcept<T>)
-		requires SubAssignable<T>
+	Value& operator-=(const nonRefrenceT& value) noexcept(subAssignNoexcept<nonRefrenceT>)
+		requires SubAssignable<nonRefrenceT>
 	{
 		_value -= value;
 		return *this;
 	}
-	Value& operator*=(const T& value) noexcept(mulAssignNoexcept<T>)
-		requires MulAssignable<T>
+	Value& operator*=(const nonRefrenceT& value) noexcept(mulAssignNoexcept<nonRefrenceT>)
+		requires MulAssignable<nonRefrenceT>
 	{
 		_value *= value;
 		return *this;
 	}
-	Value& operator/=(const T& value) noexcept(divAssignNoexcept<T>)
-		requires DivAssignable<T>
+	Value& operator/=(const nonRefrenceT& value) noexcept(divAssignNoexcept<nonRefrenceT>)
+		requires DivAssignable<nonRefrenceT>
 	{
 		_value /= value;
 		return *this;
 	}
 
-	operator T&() noexcept { return _value; }
+	operator nonRefrenceT&() noexcept { return _value; }
 
 	const std::string& name() const noexcept { return _name; }
-	void reset() noexcept(assignNoexcept) { _value = _defaultValue; }
+	void reset() noexcept(assignNoexcept<nonRefrenceT>) { _value = _defaultValue; }
 	ValueHandle<T> getHandle() noexcept {
 		return ValueHandle<T>(*this);
 	};
@@ -125,7 +143,7 @@ protected:
 private:
 	size_t _refCount;
 	const std::string _name;
-	const T _defaultValue;
+	const std::remove_reference_t<T> _defaultValue;
 };
 
 template <typename T>
@@ -166,7 +184,7 @@ public:
 	using setFunctionT = void (*)(const std::string&, T&, const T&, const T&);
 
 	ValueWithRange() = delete;
-	ValueWithRange(const std::string& name, T defaultValue, setFunctionT setFunction, T min, T max)
+	ValueWithRange(const std::string& name, const T& defaultValue, setFunctionT setFunction, const T& min, const T& max)
 		: Value<T>(name, defaultValue, setFunction)
 		, _min(min)
 		, _max(max) {
@@ -222,14 +240,18 @@ private:
 	}
 
 private:
-	T _min;
-	T _max;
+	const T _min;
+	const T _max;
 };
 
+// all value and subcategory references are invalidated only when the category is destroyed
 class SettingsCategory {
 public:
-	SettingsCategory() noexcept = default;
-	~SettingsCategory() = default;
+	SettingsCategory() = delete;
+	SettingsCategory(const std::string& name) noexcept
+		: name(name)		  
+	{}
+	~SettingsCategory() noexcept = default;
 
 	SettingsCategory(const SettingsCategory&) = delete;
 	SettingsCategory& operator=(const SettingsCategory&) = delete;
@@ -239,77 +261,90 @@ public:
 
 	template <typename T>
 	void add(std::unique_ptr<Value<T>> value) {
-		assert(!values.contains(value->name()) && "Category already contains a value with this name");
-		values[value->name()] = static_cast<std::unique_ptr<IValue>>(std::move(value));
+		auto find = [value](const std::unique_ptr<IValue>& arrVal) {
+			return arrVal->name() == value->name();
+		};
+		assert(!std::ranges::any_of(values, find) && "Category already contains a value with this name");
+		values.push_back(static_cast<std::unique_ptr<IValue>>(std::move(value)));
 	}
-	template <typename T, typename... Args>
-		requires std::derived_from<T, IValue> && std::constructible_from<T, std::string, Args...>
-	void emplace(const std::string& name, Args&&... args) {
-		assert(!values.contains(name) && "Category already contains a value with this name");
-		values.emplace(name, std::make_unique<T>(name, std::forward<Args>(args)...));
+	template <typename ValueT, typename... Args>
+		requires std::derived_from<ValueT, IValue> && std::constructible_from<ValueT, std::string, Args...>
+	void emplace(const std::string& valName, Args&&... args) {
+		auto find = [valName](const std::unique_ptr<IValue>& arrVal) {
+			return arrVal->name() == valName;
+		};
+		assert(!std::ranges::any_of(values, find) && "Category already contains a value with this name");
+		values.emplace_back(std::make_unique<ValueT>(valName, std::forward<Args>(args)...));
 	}
 
 	template <typename T>
-	Value<T>& get(const std::string& name) {
-		assert(values.contains(name) && "Category does not contain this value name");
-		auto ptr = dynamic_cast<Value<T>*>(values[name].get());
+	Value<T>& get(const std::string& valName) {
+		auto find = [valName](const std::unique_ptr<IValue>& arrVal) {
+			return arrVal->name() == valName;
+		};
+		assert(std::ranges::any_of(values, find) && "Category does not contain this value name");
+		auto it = std::ranges::find_if(values, find);
+		auto ptr = dynamic_cast<Value<T>*>(it->get());
 		assert(ptr && "Type mismatch when getting settings value");
 		return *ptr;
 	}
 
-	auto begin() noexcept {
-		return values.begin();
+	SettingsCategory& addSubCategory(const std::string& subName) {
+		auto find = [subName](const std::unique_ptr<SettingsCategory>& category) {
+			return subName == category->name;
+		};
+		assert(!std::ranges::any_of(subCategories, find) && "Category already contains a sub category with this name");
+		subCategories.emplace_back(std::make_unique<SettingsCategory>(subName));
+		return *subCategories.back();
 	}
-	auto end() noexcept {
-		return values.end();
+	SettingsCategory& getSubCategory(const std::string& subName) {
+		auto find = [subName](const std::unique_ptr<SettingsCategory>& category) {
+			return subName == category->name;
+		};
+		assert(std::ranges::any_of(subCategories, find) && "Category does not contain this sub category name");
+		return *std::ranges::find_if(subCategories, find)->get();
 	}
 
+	auto& getValues() noexcept {
+		return values;
+	}
+	auto& getSubCategories() noexcept {
+		return subCategories;
+	}
+
+	const std::string name;
 private:
-	// can make vector for faster iteration, will lose on lookup but has handles so should not matter
-	std::unordered_map<std::string, std::unique_ptr<IValue>> values;
+	std::vector<std::unique_ptr<IValue>> values;
+	std::vector<std::unique_ptr<SettingsCategory>> subCategories;
 };
 
 class Settings {
 public:
-	static SettingsCategory& newCategory(const std::string& name) {
-		assert(!categorys.contains(name) && "Settings already contains that category");
-		categorys[name] = SettingsCategory();
-		return categorys[name];
+	SettingsCategory& newCategory(const std::string& name) {
+		auto find = [name](const std::unique_ptr<SettingsCategory>& category) {
+			return name == category->name;
+		};
+		assert(!std::ranges::any_of(categories, find) && "Settings already contains that category");
+		categories.emplace_back(std::make_unique<SettingsCategory>(name));
+		return *categories.back();
 	}
 
-	static SettingsCategory& get(const std::string& category) {
-		assert(categorys.contains(category) && "Settings don't contain that category");
-		return categorys[category];
+	SettingsCategory& get(const std::string& name) {
+		auto find = [name](const std::unique_ptr<SettingsCategory>& category) {
+			return name == category->name;
+		};
+		assert(std::ranges::any_of(categories, find) && "Settings don't contain that category");
+		return *std::ranges::find_if(categories, find)->get();
 	}
 
-	static auto begin() noexcept {
-		return categorys.begin();
+	auto begin() noexcept {
+		return categories.begin();
 	}
-	static auto end() noexcept {
-		return categorys.end();
+	auto end() noexcept {
+		return categories.end();
 	}
 
 private:
-	static inline std::unordered_map<std::string, SettingsCategory> categorys;
+	std::vector<std::unique_ptr<SettingsCategory>> categories;
 };
-
-static inline ImGuiKey moveForward = ImGuiKey::ImGuiKey_W;
-static inline ImGuiKey moveBackwards = ImGuiKey::ImGuiKey_S;
-static inline ImGuiKey moveLeft = ImGuiKey::ImGuiKey_A;
-static inline ImGuiKey moveRight = ImGuiKey::ImGuiKey_D;
-static inline ImGuiKey moveUp = ImGuiKey::ImGuiKey_Space;
-static inline ImGuiKey moveDown = ImGuiKey::ImGuiKey_LeftShift;
-static inline ImGuiKey rotateLeft = ImGuiKey::ImGuiKey_LeftArrow;
-static inline ImGuiKey rotateRight = ImGuiKey::ImGuiKey_RightArrow;
-static inline ImGuiKey rotateUp = ImGuiKey::ImGuiKey_UpArrow;
-static inline ImGuiKey rotateDown = ImGuiKey::ImGuiKey_DownArrow;
-static inline ImGuiKey rollLeft = ImGuiKey::ImGuiKey_Q;
-static inline ImGuiKey rollRight = ImGuiKey::ImGuiKey_E;
-
-namespace camera {
-static inline double mouseSensitivity = 20.0;
-static inline double minRadius = 0.5;
-static inline double maxRadius = 1000;
-static inline double zoomSpeed = 0.5;
-}
 }

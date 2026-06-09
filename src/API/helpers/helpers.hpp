@@ -20,3 +20,63 @@ struct Drone {
 };
 
 Drone getDrone(const char* dronePath);
+
+enum class ButtonStateCpp : uint8_t {
+	Pressed = ButtonState_Pressed,
+	Down = ButtonState_Down,
+	Released = ButtonState_Released,
+	Up = ButtonState_Up
+};
+
+class UserInputHandler {
+public:
+	class Handle {
+		friend UserInputHandler;
+	public:
+		enum class Type : bool {
+			Button,
+			Axis
+		};
+
+		Handle() = delete;
+		Handle(std::string_view name)
+			: name(name) {
+		}
+
+	protected:
+		const std::string_view name;
+		Type type;
+		void* valuePtr = nullptr;
+	};
+
+	// gives values in the range [0, 1] and can be substituted with a button (down = 1, up = 0)
+	class HandleAxis1 : public Handle {
+	public:
+		HandleAxis1(std::string_view name)
+			: Handle(name) {}
+		float getValue() const;
+	};
+
+	// gives values in the range [-1, 1] and can be substituted with two buttons (negative = -1, neutral = 0, positive = 1)
+	class HandleAxis2 : public Handle {
+	public:
+		HandleAxis2(std::string_view name)
+			: Handle(name) {}
+		float getValue() const;
+	};
+	class HandleButton : public Handle {
+	public:
+		HandleButton(std::string_view name)
+			: Handle(name) {}
+		ButtonStateCpp getValue() const;
+	};
+
+	// the pointer to the handles must remain valid while the program is running
+	UserInputHandler(const std::vector<Handle*>& handles);
+	// should be called on startup to check if the program has handles for all the inputs
+	bool isValid(const UserInput& input) const;
+	void update(const UserInput& input);
+
+private:
+	const std::vector<Handle*> handles;
+};

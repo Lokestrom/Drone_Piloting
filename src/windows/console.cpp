@@ -2,9 +2,10 @@
 
 #include "../console.hpp"
 #include "../gui/settingsGui.hpp"
+#include "../App.hpp"
 
 void createConsoleSettings() {
-	auto& settings = settings::Settings::newCategory("Console");
+	auto& settings = App::settings.newCategory("Console");
 
 	settings.emplace<settings::Value<glm::vec3>>("Message color", 
 		glm::vec3{ 1, 1, 1 }, settings::Value<glm::vec3>::setFunctionT(gui::color));
@@ -16,9 +17,9 @@ void createConsoleSettings() {
 
 ConsoleWindow::ConsoleWindow() noexcept
 	: gui::ImGuiWindow("Console", true) 
-	, _messageColor(settings::Settings::get("Console").get<glm::vec3>("Message color").getHandle()) 
-	, _warningColor(settings::Settings::get("Console").get<glm::vec3>("Warning color").getHandle())
-	, _errorColor(settings::Settings::get("Console").get<glm::vec3>("Error color").getHandle())
+	, _messageColor(App::settings.get("Console").get<glm::vec3>("Message color").getHandle()) 
+	, _warningColor(App::settings.get("Console").get<glm::vec3>("Warning color").getHandle())
+	, _errorColor(App::settings.get("Console").get<glm::vec3>("Error color").getHandle())
 	, _showOld(false)
 { }
 

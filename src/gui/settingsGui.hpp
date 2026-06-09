@@ -2,6 +2,7 @@
 
 #include <string>
 #include <glm/glm/vec3.hpp>
+#include <ImGui/imgui.h>
 
 namespace gui {
 
@@ -14,5 +15,7 @@ void slider(const std::string& name, float& value, const float& min, const float
 void slider(const std::string& name, double& value, const double& min, const double& max);
 
 void color(const std::string& name, glm::vec3& color);
+
+void keyBindButton(const std::string& name, ImGuiKey& key);
 
 }

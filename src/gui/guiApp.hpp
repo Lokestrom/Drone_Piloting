@@ -15,6 +15,7 @@ class App {
 public:
 	static void startup();
 	static void generateWindows();
+	static void shutdown();
 
 	static void render(ImGui_ImplVulkanH_Window* wd);
 

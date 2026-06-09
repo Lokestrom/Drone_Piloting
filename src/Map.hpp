@@ -66,7 +66,9 @@ public:
 	const glm::vec3& getLightSourcePos() const noexcept { return lightSourcePos; }
 private:
 	// prints every error it can find before returning if it is valid or not
+	[[nodiscard]]
 	bool verifyMapFolder(std::filesystem::path folderPath) const;
+	[[nodiscard]]
 	bool verifyConfigFile(Json jsonData, std::filesystem::path folderPath) const;
 
 	std::vector<vulkan::ID> sceneryIDs;

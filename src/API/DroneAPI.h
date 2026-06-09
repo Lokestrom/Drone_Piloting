@@ -41,13 +41,38 @@
 
 // TODO: create C++ wrappers in .hpp(GPLv3 license)
 
+enum ButtonState : uint8_t {
+	ButtonState_Pressed,
+	ButtonState_Down,
+	ButtonState_Released,
+	ButtonState_Up
+};
+
+enum InputType : uint8_t {
+	Button,
+	Axis1Way, // [0, 1] or button (down = 1, up = 0)
+	Axis2Way  // [-1, 1] or two buttons (negative = -1, neutral = 0, positive = 1)
+};
+
+/*
+Usage:
+	The names are set by the user at startup and are guaranteed to be the same size from load to unload
+	the inputs have no guaranteed order, but they are guaranteed to be in the same order unless the changed flag is set to true, 
+	then the order can change and the user should check the names to know which input is which. 
+	An input may also change type, this is to allow for controllers but not hinder keyboard users
+	This is not a requirement to actually implement this but it will allow your drone to be used with a wider variety of users.
+	axis values are guaranteed to be in the range [-1, 1]
+	Also a pointer to a value is valid until the changed flag is set
+*/
 struct UserInput {
-	bool keyW;
-	bool keyS;
-	bool keyA;
-	bool keyD;
-	bool keySpace;
-	bool keyShift;
+	const char** names;
+	InputType* types;
+	ButtonState* buttonPressed;
+	uint64_t buttonCount;
+	float* axisValues;
+	uint64_t axisCount;
+
+	bool changed;
 };
 
 struct DroneState {

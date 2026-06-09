@@ -12,7 +12,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-void createSettings();
 
 class App {
 public:
@@ -22,11 +21,16 @@ public:
 	static void run();
 	static inline int width, height;
 
+	[[nodiscard]]
 	static double getDeltaTime() { return dt; };
+	[[nodiscard]]
 	static GLFWwindow* getGLFWwindow() { return window; };
 
+	[[nodiscard]]
 	static vulkan::Camera& getCamera() noexcept { return player->getCamera(); }
+	[[nodiscard]]
 	static std::optional<Drone>& getDrone() noexcept { return player->getDrone(); }
+	[[nodiscard]]
 	static vulkan::UniformBufferObject getUBO() noexcept { 
 		vulkan::UniformBufferObject ubo = player->getUBO();
 		ubo.lightSource = glm::vec4(map.getLightSourcePos(),1.0);
@@ -34,6 +38,7 @@ public:
 	}
 
 	static void swapDrone(std::filesystem::path folderPath) { player->SwapDrone(folderPath); }
+	[[nodiscard]]
 	static bool swapMap(std::filesystem::path folderPath) {
 		map.unload();
 		return map.load(folderPath);
@@ -49,6 +54,7 @@ public:
 		glm::vec4 color = glm::vec4(1, 0, 0, 1);
 	};
 
+	static inline settings::Settings settings;
 	static inline std::vector<RenderVector> renderVectors;
 	static inline std::vector<RenderPoint> renderPoints;
 	static inline glm::vec2 vectorScale;
@@ -58,6 +64,7 @@ private:
 	static void render();
 	//should delegate to something else like the inputhandler
 	static void updateMouseInput();
+	static void createSettings();
 
 private:
 	static inline ImGui_ImplVulkanH_Window* wd;

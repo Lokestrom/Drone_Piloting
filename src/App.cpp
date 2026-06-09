@@ -7,11 +7,6 @@
 
 #include <vulkan/vk_enum_string_helper.h>
 
-void createSettings() {
-	vulkan::createRenderingSettings();
-	createConsoleSettings();
-}
-
 static void glfwErrorCallback(int error, const char* description) {
 	Console::log(Console::Log::Type::error, std::string("GLFW error: Code: ") + std::to_string(error) + ", What: " + description);
 }
@@ -26,6 +21,8 @@ static void check_vk_result(VkResult err) {
 }
 
 void App::startup() {
+	createSettings();
+
 	glfwSetErrorCallback(glfwErrorCallback);
 	if (!glfwInit())
 		throw std::runtime_error("GLFW initialization failed");
@@ -121,6 +118,7 @@ void App::shutdown() {
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 
+	gui::App::shutdown();
 	vulkan::App::shutdown();
 
 	glfwDestroyWindow(window);
@@ -274,4 +272,10 @@ void App::render() {
 	if (!mainMinimized) {
 		vulkan::App::endFrame(wd);
 	}
+}
+
+void App::createSettings() {
+	settings.newCategory("Key Bindings");
+	vulkan::createRenderingSettings();
+	createConsoleSettings();
 }

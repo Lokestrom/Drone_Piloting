@@ -39,5 +39,38 @@
       "forceDirection": [ 0, 1, 0 ],
       "maxThrust": 10
     }
+  ],
+
+  "inputs": [
+    {
+      "name": "Forward",
+      "type": "axis2",
+      "defaultKeyboardKey": "w"
+    },
+    {
+      "name": "Backward",
+      "type": "axis2",
+      "defaultKeyboardKey": "s"
+    },
+    {
+      "name": "Left",
+      "type": "axis2",
+      "defaultKeyboardKey": "a"
+    },
+    {
+      "name": "Right",
+      "type": "axis2",
+      "defaultKeyboardKey": "d"
+    },
+    {
+      "name": "Up",
+      "type": "axis2",
+      "defaultKeyboardKey": "space"
+    },
+    {
+      "name": "Down",
+      "type": "axis2",
+      "defaultKeyboardKey": "left shift"
+    }
   ]
 }

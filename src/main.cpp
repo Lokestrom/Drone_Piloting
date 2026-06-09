@@ -7,8 +7,6 @@
 
 int main() {
 	try {
-		createSettings();
-
 		if constexpr (benchmark::enabled) {
 			benchmark::createFile("no_instancing_draws");
 

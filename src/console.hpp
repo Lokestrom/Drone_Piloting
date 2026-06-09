@@ -57,6 +57,7 @@ public:
 
 private: 
 
+	[[nodiscard]]
 	static std::string_view toString(Log::Type type) noexcept {
 		switch (type) {
 		case Log::Type::message:

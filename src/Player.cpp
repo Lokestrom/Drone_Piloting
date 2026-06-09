@@ -20,7 +20,7 @@ void Player::SwapDrone(std::filesystem::path folderPath) {
 		_drone.emplace(folderPath);
 		return;
 	}
-	DroneState state = _drone->getState();
+	API::DroneState state = _drone->getState();
 	_drone.reset();
 	_drone.emplace(folderPath, state);
 }

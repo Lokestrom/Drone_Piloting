@@ -4,6 +4,7 @@
 #include <shobjidl.h>
 #include <windows.h>
 
+[[nodiscard]] 
 std::string OpenFileExplorer(HWND owner) {
 	std::string result;
 	IFileDialog* pfd = nullptr;

@@ -24,5 +24,10 @@ void InfoWindow::_render() {
 				}
 			}
 		}
+		if (ImGui::CollapsingHeader("Key binds")) {
+			for (auto& i : App::getDrone().value()._settings.get("Inputs").getValues()) {
+				i->set();
+			}
+		}
 	}
 }
