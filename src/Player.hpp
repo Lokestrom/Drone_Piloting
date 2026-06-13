@@ -34,5 +34,4 @@ public:
 private:
 	std::optional<Drone> _drone;
 	vulkan::Camera _camera;
-	Error err;
 };

@@ -39,68 +39,69 @@ UserInputHandler::UserInputHandler(const std::vector<Handle*>& handles)
 	: handles(handles) {
 }
 
-bool UserInputHandler::isValid(const UserInput& input) const {
-	for (size_t i = 0; i < input.buttonCount + input.axisCount; ++i) {
-		bool found = false;
-		for (const auto* handle : handles) {
-			if (handle->name == input.names[i]) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
+namespace {
+bool isValid(const UserInput& input, const std::vector<UserInputHandler::Handle*>& handles) {
+	for (size_t i = 0; i < input.size; ++i) {
+		auto checkName = [&input, &i](UserInputHandler::Handle* handle) {
+			return input.names[i] == handle->name;
+		};
+		if (!std::ranges::any_of(handles, checkName)) {
 			return false;
 		}
 	}
+	
+	for (const auto handle : handles) {
+		auto checkName = [&handle](const char* inputName) {
+			return handle->name == inputName;
+		};
+		if (!std::any_of(input.names, input.names + input.size, checkName)) {
+			return false;
+		}
+	}
+
 	return true;
 }
 
-void UserInputHandler::update(const UserInput& input) {
-	if (!input.changed) {
-		return;
+}
+
+void UserInputHandler::startUp(const UserInput& input) {
+	assert(isValid(input, handles) && 
+		"There is unaccounted for input, there is some inputs in the config not used by the program or vise versa"
+		"Also check for spelling mistakes"
+	);
+
+	size_t buttonIndex = 0;
+	size_t axisIndex = 0;
+
+	for (size_t i = 0; i < input.size; i++) {
+		for (auto handle : handles) {
+			if (handle->name != input.names[i]) {
+				continue;
+			}
+			
+			if (input.types[i] == InputType::Button) {
+				handle->valuePtr = &input.buttonPressed[buttonIndex++];
+			}
+			else {
+				handle->valuePtr = &input.axisValues[axisIndex++];
+			}
+		}
 	}
 
-	for (size_t i = 0; i < input.buttonCount; ++i) {
-		for (auto* handle : handles) {
-			if (handle->name == input.names[i]) {
-				handle->type = Handle::Type::Button;
-				handle->valuePtr = static_cast<void*>(&input.buttonPressed[i]);
-			}
-			// axis 2 way takes up two button slots, so we need to skip the next one if we encounter one
-			if (input.types[i] == InputType::Axis2Way)
-				i++;
-		}
-	}
-	for (size_t i = 0; i < input.axisCount; ++i) {
-		for (auto* handle : handles) {
-			if (handle->name == input.names[i]) {
-				handle->type = Handle::Type::Axis;
-				handle->valuePtr = static_cast<void*>(&input.axisValues[i]);
-			}
-		}
-	}
 }
 
 float UserInputHandler::HandleAxis1::getValue() const {
-	if (type == Type::Button) {
-		ButtonStateCpp state = *static_cast<ButtonStateCpp*>(valuePtr);
-		return state == ButtonStateCpp::Up || state == ButtonStateCpp::Pressed;
-	}
-	return *static_cast<float*>(valuePtr) / 2. + 1.;
+	assert((0 <= *static_cast<float*>(valuePtr) && *static_cast<float*>(valuePtr) <= 1) 
+		&& "A float of axis 1 must have a value in the range [0,1]");
+	return *static_cast<float*>(valuePtr);
 }
 
 float UserInputHandler::HandleAxis2::getValue() const {
-	if (type == Type::Button) {
-		ButtonStateCpp state1 = *static_cast<ButtonStateCpp*>(valuePtr);
-		ButtonStateCpp state2 = *(static_cast<ButtonStateCpp*>(valuePtr) + 1);
-		return (state1 == ButtonStateCpp::Up || state1 == ButtonStateCpp::Pressed) - (state2 == ButtonStateCpp::Up || state2 == ButtonStateCpp::Pressed);
-	}
+	assert((-1 <= *static_cast<float*>(valuePtr) && *static_cast<float*>(valuePtr) <= 1)
+		&& "A float of axis 2 must have a value in the range [-1,1]");
 	return *static_cast<float*>(valuePtr);
 }
 
 ButtonStateCpp UserInputHandler::HandleButton::getValue() const {
-	if (type == Type::Axis) {
-		return *static_cast<float*>(valuePtr) > 0.5 ? ButtonStateCpp::Pressed : ButtonStateCpp::Released;
-	}
 	return *static_cast<ButtonStateCpp*>(valuePtr);
 }

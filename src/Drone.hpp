@@ -13,26 +13,6 @@ namespace API {
 #include "Input/InputEventHandler.hpp"
 #include "Settings.hpp"
 
-struct Error {
-public:		
-	Error() noexcept = default;
-	[[nodiscard]] bool hasError() const noexcept { return message.has_value(); }
-	[[nodiscard]] const std::string& getMessage() const noexcept { return message.value(); }
-
-	void operator+=(const std::string& msg) {
-		if (message.has_value()) {
-			message.value() += msg;
-		}
-		else {
-			message = msg;
-		}
-	}
-
-private:
-	std::optional<std::string> message;
-
-};
-
 struct DronePlugin {
 	SharedLib lib;
 	API::UpdateFn update;
@@ -111,8 +91,7 @@ private:
 	DronePlugin _plugin;
 
 	API::UserInput _input;
-	std::vector<std::string> _inputNames;
-	std::vector<const char*> _inputNamePtrs;
 	std::vector<API::InputType> _inputType;
 	std::vector<ButtonState> _inputButtonStates;
+	std::vector<float> _inputAxisStates;
 };

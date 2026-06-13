@@ -22,7 +22,7 @@ public:
 		std::string what;
 	};
 
-	static void log(Log::Type type, std::string what) {
+	static void log(Log::Type type, const std::string& what) {
 		std::lock_guard<std::mutex> lock(mutex);
 		_logs.emplace_back(type, what);
 		if (type != Log::Type::message)

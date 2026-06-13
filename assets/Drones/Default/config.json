@@ -51,5 +51,33 @@
       "forceDirection": [ 0, 1, 0 ],
       "maxThrust": 10
     }
+  ],
+
+  "inputs": [
+    {
+      "name": "Forward",
+      "type": "axis2",
+      "default key": [ "w", "s" ]
+    },
+    {
+      "name": "Left",
+      "type": "axis1",
+      "default key": "a"
+    },
+    {
+      "name": "Right",
+      "type": "axis1",
+      "default key": "d"
+    },
+    {
+      "name": "Up",
+      "type": "button",
+      "default key": "space"
+    },
+    {
+      "name": "Down",
+      "type": "button",
+      "default key": "left shift"
+    }
   ]
 }

@@ -33,19 +33,13 @@ public:
 	class Handle {
 		friend UserInputHandler;
 	public:
-		enum class Type : bool {
-			Button,
-			Axis
-		};
-
 		Handle() = delete;
 		Handle(std::string_view name)
 			: name(name) {
 		}
 
-	protected:
 		const std::string_view name;
-		Type type;
+	protected:
 		void* valuePtr = nullptr;
 	};
 
@@ -74,8 +68,7 @@ public:
 	// the pointer to the handles must remain valid while the program is running
 	UserInputHandler(const std::vector<Handle*>& handles);
 	// should be called on startup to check if the program has handles for all the inputs
-	bool isValid(const UserInput& input) const;
-	void update(const UserInput& input);
+	void startUp(const UserInput& input);
 
 private:
 	const std::vector<Handle*> handles;

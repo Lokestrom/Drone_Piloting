@@ -50,29 +50,26 @@ enum ButtonState : uint8_t {
 
 enum InputType : uint8_t {
 	Button,
-	Axis1Way, // [0, 1] or button (down = 1, up = 0)
-	Axis2Way  // [-1, 1] or two buttons (negative = -1, neutral = 0, positive = 1)
+	Axis1Way, // [0, 1] or button 0 or 1
+	Axis2Way  // [-1, 1] or two buttons -1 or 0 or 1
 };
 
 /*
-Usage:
-	The names are set by the user at startup and are guaranteed to be the same size from load to unload
-	the inputs have no guaranteed order, but they are guaranteed to be in the same order unless the changed flag is set to true, 
-	then the order can change and the user should check the names to know which input is which. 
-	An input may also change type, this is to allow for controllers but not hinder keyboard users
-	This is not a requirement to actually implement this but it will allow your drone to be used with a wider variety of users.
-	axis values are guaranteed to be in the range [-1, 1]
-	Also a pointer to a value is valid until the changed flag is set
+size is the total amount of inputs.
+names are the names that can be used to find the inputs, it is valid only in the startup function
+The types is InputType if it is Button then the value is in buttonPressed else it is axisValues
+The values in the types, buttonPressed, and axisValues arrays are valid for the duration of your scripts lifetime
+buttonPressed contains the state of the buttons and axisValues the state of the axis inputs
+The values in buttonPressed and axisValues are updated each update
+The values in types are never updated so it is probably never used outside of the startup function
 */
+
 struct UserInput {
+	uint64_t size;
 	const char** names;
 	InputType* types;
 	ButtonState* buttonPressed;
-	uint64_t buttonCount;
 	float* axisValues;
-	uint64_t axisCount;
-
-	bool changed;
 };
 
 struct DroneState {
@@ -100,12 +97,11 @@ struct SettingsBuffer {
 
 // Function pointer type
 typedef void (*UpdateFn)(
-	const UserInput* input,
 	const DroneState* state,
 	const float dt,
 	CommandBuffer* outCommands);
 
-typedef void (*SetupFn)(const char* dronePath);
+typedef void (*SetupFn)(const char* dronePath, const UserInput* input);
 
 typedef void (*GetTargetPositionFn)(float* outPosition);
 typedef SettingsBuffer* (*GetSettingsFn)();

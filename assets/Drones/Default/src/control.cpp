@@ -2,8 +2,8 @@
 
 #include "../../../../src/API/helpers/PIDcontroler.hpp"
 
-DRONE_API void setup(const char* dronePath) {
-	PIDController::setup(dronePath);
+DRONE_API void setup(const char* dronePath, const UserInput* input) {
+	PIDController::setup(dronePath, input);
 	float& moveSpeed = *PIDController::getSetting("MOVE_SPEED").value();
 	moveSpeed = 10.;
 	float& altitudeSpeed = *PIDController::getSetting("ALTITUDE_SPEED").value();
@@ -29,9 +29,8 @@ DRONE_API void setup(const char* dronePath) {
 }
 
 DRONE_API void update(
-	const UserInput* input,
 	const DroneState* state,
 	const float dt,
 	CommandBuffer* outCommands) {
-	PIDController::update(input, state, dt, outCommands);
+	PIDController::update(state, dt, outCommands);
 }

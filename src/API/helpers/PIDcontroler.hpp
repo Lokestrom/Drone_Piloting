@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../../../../src/API/DroneAPI.h"
 #include "../../../../src/API/helpers/helpers.hpp"
 
@@ -100,17 +102,14 @@ static std::vector<float*> g_settingValues = {
 };
 
 namespace InputHandles {
-using InputType = UserInputHandler::Handle::Type;
-static UserInputHandler::HandleButton forward{ "Forward" };
-static UserInputHandler::HandleButton backward{ "Backward" };
-static UserInputHandler::HandleButton right{ "Right" };
-static UserInputHandler::HandleButton left{ "Left" };
+static UserInputHandler::HandleAxis2 forward{ "Forward" };
+static UserInputHandler::HandleAxis1 right{ "Right" };
+static UserInputHandler::HandleAxis1 left{ "Left" };
 static UserInputHandler::HandleButton up{ "Up" };
 static UserInputHandler::HandleButton down{ "Down" };
 }
 static UserInputHandler g_inputHandler({ 
 	&InputHandles::forward,
-	&InputHandles::backward,
 	&InputHandles::right,
 	&InputHandles::left,
 	&InputHandles::up,
@@ -189,22 +188,11 @@ static void solveSystem(
 	}
 }
 
-static void updateTargetPosition(
-	const UserInput* input,
-	float dt) {
+static void updateTargetPosition(float dt) {
 	glm::vec3 move(0);
 
-	if (InputHandles::forward.getValue() == ButtonStateCpp::Pressed || InputHandles::forward.getValue() == ButtonStateCpp::Down)
-		move.z -= 1.0f;
-
-	if (InputHandles::backward.getValue() == ButtonStateCpp::Pressed || InputHandles::backward.getValue() == ButtonStateCpp::Down)
-		move.z += 1.0f;
-
-	if (InputHandles::left.getValue() == ButtonStateCpp::Pressed || InputHandles::left.getValue() == ButtonStateCpp::Down)
-		move.x -= 1.0f;
-
-	if (InputHandles::right.getValue() == ButtonStateCpp::Pressed || InputHandles::right.getValue() == ButtonStateCpp::Down)
-		move.x += 1.0f;
+	move.z += InputHandles::forward.getValue();
+	move.x += InputHandles::left.getValue() - InputHandles::right.getValue();
 
 	if (glm::length(move) > 0.0f)
 		move = glm::normalize(move);
@@ -252,8 +240,10 @@ void addSettings(const char* name, float& value) {
 	g_settingValues.push_back(&value);
 }
 
-void setup(const char* dronePath) {
+void setup(const char* dronePath, const UserInput* input) {
 	g_drone = getDrone(dronePath);
+
+	g_inputHandler.startUp(*input);
 
 	g_settings = {
 		.names = g_settingNames.data(),
@@ -262,17 +252,13 @@ void setup(const char* dronePath) {
 	};
 }
 void update(
-	const UserInput* input,
 	const DroneState* state,
 	const float dt,
 	CommandBuffer* outCommands) {
 
-	assert(input && "The input is nullptr");
 	assert(state && "The state is nullptr");
 	assert(dt > 0 && "The dt is not grater than 0");
 	assert(outCommands && "The out commands in nullptr");
-
-	g_inputHandler.update(*input);
 
 	glm::vec3 position = toVec(state->position);
 	glm::vec3 velocity = toVec(state->velocity);
@@ -284,7 +270,7 @@ void update(
 		g_initialized = true;
 	}
 
-	updateTargetPosition(input, dt);
+	updateTargetPosition(dt);
 
 	glm::vec3 positionError = g_targetPosition - position;
 

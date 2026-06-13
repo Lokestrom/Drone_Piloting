@@ -45,32 +45,27 @@
     {
       "name": "Forward",
       "type": "axis2",
-      "defaultKeyboardKey": "w"
-    },
-    {
-      "name": "Backward",
-      "type": "axis2",
-      "defaultKeyboardKey": "s"
+      "default key": [ "w", "s" ]
     },
     {
       "name": "Left",
-      "type": "axis2",
-      "defaultKeyboardKey": "a"
+      "type": "axis1",
+      "default key": "a"
     },
     {
       "name": "Right",
-      "type": "axis2",
-      "defaultKeyboardKey": "d"
+      "type": "axis1",
+      "default key": "d"
     },
     {
       "name": "Up",
-      "type": "axis2",
-      "defaultKeyboardKey": "space"
+      "type": "button",
+      "default key": "space"
     },
     {
       "name": "Down",
-      "type": "axis2",
-      "defaultKeyboardKey": "left shift"
+      "type": "button",
+      "default key": "left shift"
     }
   ]
 }
