@@ -15,6 +15,9 @@ void renderToolBar() {
 			if (ImGui::MenuItem("Drone select")) {
 				addFunction("Drone select");
 			}
+			if (ImGui::MenuItem("Player menu")) {
+				addFunction("Player menu");
+			}
 			if (ImGui::MenuItem("Map select")) {
 				addFunction("Map select");
 			}

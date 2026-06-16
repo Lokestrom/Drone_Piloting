@@ -1,15 +1,17 @@
 #include "Player.hpp"
 
-Player::Player() noexcept
-	: _camera()
-	, _drone()
-{
+Player::Player(const std::string& name) noexcept
+	: _name(name)
+	, _camera()
+	, _drone() {
+	_camera.setState(vulkan::Camera::State::FreeCAM);
 	_camera.getPositionRef() = glm::vec3(0, 2, -5);
 	_camera.updateViewMatrix();
 }
 
-Player::Player(std::filesystem::path folderPath)
-	: _drone(folderPath)
+Player::Player(const std::string& name, std::filesystem::path folderPath)
+	: _name(name)
+	, _drone(folderPath)
 	, _camera() {
 	_camera.getPositionRef() = glm::vec3(0, 2, 0);
 	_camera.updateViewMatrix();
@@ -17,6 +19,7 @@ Player::Player(std::filesystem::path folderPath)
 
 void Player::SwapDrone(std::filesystem::path folderPath) {
 	if (!_drone.has_value()) {
+		_camera.setState(vulkan::Camera::State::Orbit);
 		_drone.emplace(folderPath);
 		return;
 	}
@@ -26,6 +29,7 @@ void Player::SwapDrone(std::filesystem::path folderPath) {
 }
 
 void Player::releaseDrone() {
+	_camera.setState(vulkan::Camera::State::FreeCAM);
 	_drone.reset();
 }
 
@@ -58,7 +62,7 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 	};
 }
 
-void Player::update(bool updateCamera) {
+void Player::update(bool active, bool updateCamera) {
 	using vulkan::Camera;
 	if (ImGui::IsKeyPressed(ImGuiKey_F))
 		_camera.setState(Camera::State::FreeCAM);
@@ -68,5 +72,5 @@ void Player::update(bool updateCamera) {
 	if (updateCamera)
 		_camera.update();
 	if (_drone.has_value())
-		_drone->update();
+		_drone->update(active);
 }

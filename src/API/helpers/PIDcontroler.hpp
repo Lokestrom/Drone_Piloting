@@ -254,6 +254,7 @@ void setup(const char* dronePath, const UserInput* input) {
 void update(
 	const DroneState* state,
 	const float dt,
+	const bool active,
 	CommandBuffer* outCommands) {
 
 	assert(state && "The state is nullptr");
@@ -270,7 +271,8 @@ void update(
 		g_initialized = true;
 	}
 
-	updateTargetPosition(dt);
+	if (active)
+		updateTargetPosition(dt);
 
 	glm::vec3 positionError = g_targetPosition - position;
 

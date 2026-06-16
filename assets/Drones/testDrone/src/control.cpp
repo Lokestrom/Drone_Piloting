@@ -9,6 +9,7 @@ DRONE_API void setup(const char* dronePath, const UserInput* input) {
 DRONE_API void update(
 	const DroneState* state,
 	const float dt,
+	const bool active,
 	CommandBuffer* outCommands) {
-	PIDController::update(state, dt, outCommands);
+	PIDController::update(state, dt, active, outCommands);
 }

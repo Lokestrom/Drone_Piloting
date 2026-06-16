@@ -99,6 +99,7 @@ struct SettingsBuffer {
 typedef void (*UpdateFn)(
 	const DroneState* state,
 	const float dt,
+	const bool active,
 	CommandBuffer* outCommands);
 
 typedef void (*SetupFn)(const char* dronePath, const UserInput* input);

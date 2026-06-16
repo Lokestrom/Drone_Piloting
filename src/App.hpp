@@ -27,22 +27,38 @@ public:
 	static GLFWwindow* getGLFWwindow() { return window; };
 
 	[[nodiscard]]
-	static vulkan::Camera& getCamera() noexcept { return player->getCamera(); }
+	static vulkan::Camera& getCamera() noexcept { return getCurrentPlayer().getCamera(); }
 	[[nodiscard]]
-	static std::optional<Drone>& getDrone() noexcept { return player->getDrone(); }
+	static std::optional<Drone>& getDrone() noexcept { return getCurrentPlayer().getDrone(); }
 	[[nodiscard]]
 	static vulkan::UniformBufferObject getUBO() noexcept { 
-		vulkan::UniformBufferObject ubo = player->getUBO();
+		vulkan::UniformBufferObject ubo = getCurrentPlayer().getUBO();
 		ubo.lightSource = glm::vec4(map.getLightSourcePos(),1.0);
 		return ubo;
 	}
 
-	static void swapDrone(std::filesystem::path folderPath) { player->SwapDrone(folderPath); }
+	static void swapDrone(std::filesystem::path folderPath) { getCurrentPlayer().SwapDrone(folderPath); }
 	[[nodiscard]]
 	static bool swapMap(std::filesystem::path folderPath) {
 		map.unload();
 		return map.load(folderPath);
 	}
+
+	// Should create a player container
+	[[nodiscard]]
+	static Player& getCurrentPlayer() noexcept {
+		assert(hasPlayers() && "Can't get current player if there is no players");
+		return *players[currentPlayer];
+	}
+	[[nodiscard]] 
+	static const std::vector<std::unique_ptr<Player>>& getPlayers() noexcept { return players; }
+	static void swapPlayer(const std::string& name) noexcept;
+	static void addPlayer(const std::string& name);
+	static void removePlayer(const std::string& name) noexcept;
+	[[nodiscard]]
+	static bool hasPlayers() noexcept { return !players.empty(); };
+	[[nodiscard]]
+	static bool hasPlayer(const std::string& name) noexcept;
 
 	struct RenderVector {
 		glm::vec3 position;
@@ -69,7 +85,8 @@ private:
 private:
 	static inline ImGui_ImplVulkanH_Window* wd;
 	static inline GLFWwindow* window;
-	static inline std::unique_ptr<Player> player;
+	static inline std::vector<std::unique_ptr<Player>> players;
+	static inline size_t currentPlayer = 0;
 	static inline Map map;
 	static inline double dt;
 };

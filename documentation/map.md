@@ -7,8 +7,6 @@ with a valid `name` field will show up.
 Or click the find map button(only available on windows) to open the 
 file explorer and find any folder on disk.
 
-Tips: for large maps select them in the menu to prevent breaking the simulation.
-
 Also note that a map is just visual and has no effect on the physics, 
 there is no collision detection implemented yet, so you can fly through the map.
 

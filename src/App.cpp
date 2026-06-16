@@ -4,6 +4,7 @@
 #include "console.hpp"
 #include "rendering/helpers.hpp"
 #include "benchmark.hpp"
+#include "gui/settingsGui.hpp"
 
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -86,9 +87,10 @@ void App::startup() {
 	ImGui_ImplVulkan_Init(&init_info);
 
 	// TODO: create async loading.
-	player = std::make_unique<Player>();
+	addPlayer("Default");
+	auto& player = getCurrentPlayer();
 	try {
-		player->SwapDrone(ASSET_DIR "drones/testDrone");
+		player.SwapDrone(ASSET_DIR "drones/testDrone");
 	}
 	catch (std::exception& e) {
 		Console::log(Console::Log::Type::error, std::string("Failed to load default drone with: ") + e.what());
@@ -112,7 +114,8 @@ void App::shutdown() {
 	}
 
 	map.unload();
-	player->releaseDrone();
+	for (auto& player : players)
+		player->releaseDrone();
 
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -238,8 +241,16 @@ void App::loop() {
 			updateCamera = false;
 		}
 
-		if (!gui::App::enabled || !gui::App::inMenu)
-			player->update(updateCamera);
+		if (dt < 0.5) {
+			if (!gui::App::enabled || !gui::App::inMenu)
+				for (auto& player : players)
+					player->update(player.get() == &getCurrentPlayer(), updateCamera);
+		}
+		else {
+			Console::log(Console::Log::Type::warning, "Skiped physics update, delta time to large. "
+				"This message is normal if it happens once after loading a map, drone or focusing the window. "
+				"If this warning persists the drone or map may be to performance intensive for your computer.");
+		}
 
 		render();
 
@@ -278,4 +289,53 @@ void App::createSettings() {
 	settings.newCategory("Key Bindings");
 	vulkan::createRenderingSettings();
 	createConsoleSettings();
+
+	auto& playerSettings = settings.newCategory("Player");
+	playerSettings.emplace<settings::Value<bool>>("Swap to player on creation",
+		true, settings::Value<bool>::setFunctionT(gui::checkbox));
+}
+
+
+void App::swapPlayer(const std::string& name) noexcept {
+	auto playerNameCheck = [&name](const std::unique_ptr<Player>& player) noexcept {
+		return name == player->name();
+	};
+	assert(name != getCurrentPlayer().name() 
+		&& "Can't swap to the current selected player, check for multiple players with this name");
+	assert(std::ranges::count_if(players, playerNameCheck) == 1
+		&& "There is no or multiple player with the name");
+	currentPlayer = std::ranges::find_if(players, playerNameCheck) - players.begin();
+}
+
+void App::addPlayer(const std::string& name) {
+	players.push_back(std::make_unique<Player>(name));
+	if (settings.get("Player").get<bool>("Swap to player on creation").getHandle().get())
+		currentPlayer = players.size() - 1;
+}
+
+void App::removePlayer(const std::string& name) noexcept {
+	auto playerNameCheck = [&name](const std::unique_ptr<Player>& player) noexcept {
+		return name == player->name();
+	};
+
+	assert(std::ranges::count_if(players, playerNameCheck) == 1 
+		&& "There is no or multiple player with the name");
+	
+	size_t player = std::ranges::find_if(players, playerNameCheck) - players.begin();
+	players.erase(players.begin() + player);
+
+	if (currentPlayer == 0)
+		return;
+	if (currentPlayer >= player)
+		currentPlayer--;
+	assert((currentPlayer < players.size() || players.empty()) 
+		&& "The current player index is out of range");
+}
+
+bool App::hasPlayer(const std::string& name) noexcept {
+	auto playerNameCheck = [&name](const std::unique_ptr<Player>& player) noexcept {
+		return name == player->name();
+	};
+
+	return std::ranges::any_of(players, playerNameCheck);
 }

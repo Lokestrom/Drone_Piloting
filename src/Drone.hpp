@@ -36,7 +36,7 @@ public:
 	Drone(std::filesystem::path folderPath, API::DroneState state);
 	~Drone() noexcept;
 
-	void update();
+	void update(bool active);
 
 	[[nodiscard]]
 	glm::vec3& getPosition() noexcept;

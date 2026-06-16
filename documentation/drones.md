@@ -17,7 +17,10 @@ with a valid `name` field will show up.
 Or click the find drone button(only available on windows) to open the 
 file explorer and find any folder on disk.
 
-Tips: for large models select them in the menu to prevent breaking the simulation.
+To create multiple drones press the player menu and create a new player then load a drone,
+here you can also just not load a drone an use it as a camera. When swiping players the 
+normal behavior is that only the selected players inputs are used in drones. But this behavior
+is up to the drone implementation.
 
 ## Custom drones
 This is where the real fun starts, you can create your own drones by following these instructions. <br>
@@ -60,6 +63,7 @@ This library must implement a function with the following signature:
 DRONE_API void update(
 	const DroneState* state,
 	const float dt,
+	const float active,
 	CommandBuffer* outCommands)
 ```
 This function is called every frame and is responsible for updating the drone's state based on 
@@ -67,14 +71,15 @@ the user input and the current state of the drone.
 #### Parameters:
 * `state`: A pointer to a `DroneState` structure that contains the current state of the drone.
 * `dt`: The delta time.
+* `active`: This is set if the drone belongs to the currently selected player, this has no effect on behavior and the drone still receives input. The recommended use case is to ignore user input but this is totally optional. 
 * `outCommands`: A pointer to a `CommandBuffer` structure where the function should write the commands for the drone.
 
 #### Output:
 The function should write the commands for the drone to the `outCommands` buffer.
 
 The best way of understating how to write the control code is to look at the example drones in `assets/drones/*/src`,
-Here is some example code and a CMkeLists.txt that structures everything for you, Debug and Release folders with the dynamic library.
-When running in the respective configurations the software uses the correct library, there is no error checking so the program will crach
+here is some example code and a `CMkeLists.txt` that structures everything for you, Debug and Release folders with the dynamic library.
+When running in the respective configurations the software uses the correct library, there is no error checking so the program will crash
 silently and this can be a reason why.
 
 ### Optional's

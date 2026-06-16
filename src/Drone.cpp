@@ -314,7 +314,7 @@ Drone::~Drone() noexcept {
 	vulkan::GameObjectContainer::Remove(objectID);
 }
 
-void Drone::update() {
+void Drone::update(bool active) {
 	auto& obj = vulkan::GameObjectContainer::get(objectID);
 
 	glm::mat3 R = glm::mat3_cast(getOrientation());
@@ -328,7 +328,7 @@ void Drone::update() {
 	};
 
 	populateInput();
-	_plugin.update(&state, (float)App::getDeltaTime(), &commands);
+	_plugin.update(&state, (float)App::getDeltaTime(), active, &commands);
 	if (_plugin.getTargetPosition) {
 		glm::vec3 targetPos;
 		_plugin.getTargetPosition(&targetPos.x);

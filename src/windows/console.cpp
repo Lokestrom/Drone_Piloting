@@ -61,7 +61,11 @@ void ConsoleWindow::print(const Console::Log& log) {
 	}
 	prefix += ": ";
 
+	ImGui::PushTextWrapPos(0.0f);
+
 	ImGui::TextColored(color, (prefix + log.what).c_str());
+	
+	ImGui::PopTextWrapPos();
 }
 
 void ConsoleWindow::_render() {

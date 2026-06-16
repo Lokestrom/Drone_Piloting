@@ -38,7 +38,6 @@ Current plans for what i want to implement
 ### Core:
 * Custom forces
 * Collisions
-* Multi drone support
 * Fixed time step simulation
 * Saving and loading
 
