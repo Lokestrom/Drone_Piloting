@@ -525,7 +525,6 @@ bool Drone::verifyFolder(const std::filesystem::path& folderPath) const {
 		Console::log(Console::Log::Type::error, 
 			std::string("Drone folder does not contain a control script '") + 
 			std::string(getLibPath()) + std::string(getLibExtention()) + "': " + folderPath.string()); 
-			//std::string(getLibPath()) + std::string(getLibExtention()) + "': " + folderPath.string());
 		errorHit();
 	}
 	if (!valid) {

@@ -15,3 +15,10 @@
 /assets/Drones/*/Release
 /assets/Drones/*/modelData
 /benchmarks
+
+#rust example
+/assets/Drones/testDrone/src/rust_example/target
+/assets/Drones/testDrone/src/rust_example/Cargo.lock
+
+# agentic workflows
+/.agents

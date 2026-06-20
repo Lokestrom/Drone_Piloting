@@ -1,0 +1,11 @@
+[package]
+name = "test_drone_rust"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "control"
+crate-type = ["cdylib"]
+
+[profile.release]
+strip = true
