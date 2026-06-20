@@ -63,7 +63,9 @@ public:
 	bool load(std::filesystem::path folderPath);
 	void unload();
 
+	[[nodiscard]]
 	const glm::vec3& getLightSourcePos() const noexcept { return lightSourcePos; }
+
 private:
 	// prints every error it can find before returning if it is valid or not
 	[[nodiscard]]

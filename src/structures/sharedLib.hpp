@@ -9,38 +9,38 @@ public:
 		: handle(nullptr), errorMessage("") {}
 	SharedLib(std::filesystem::path path) noexcept;
 	
-	SharedLib(const SharedLib&) = default;
-	SharedLib(SharedLib&& other) noexcept
-		: handle(other.handle), errorMessage(std::move(other.errorMessage)) {
-		other.handle = nullptr;
-	}
+	SharedLib(const SharedLib&) = delete;
+	SharedLib& operator=(const SharedLib&) = delete;
 
-	SharedLib& operator=(const SharedLib&) = default;
-	SharedLib& operator=(SharedLib&& other) noexcept {
-		if (this != &other) {
-			handle = other.handle;
-			errorMessage = std::move(other.errorMessage);
-			other.handle = nullptr;
-		}
-		return *this;
-	}
+	SharedLib(SharedLib&& other) noexcept;
+	SharedLib& operator=(SharedLib&& other) noexcept;
 
 	~SharedLib() noexcept;
 
-
+	[[nodiscard]]
 	void* getFunction(const char* name) const noexcept;
+	[[nodiscard]]
 	bool hasFunction(const char* name) const noexcept {
 		// TODO: should handle errors and reset them to previous state 
 		// and check if the error is about missing function or something else
 		return getFunction(name) != nullptr;
 	}
 
+	[[nodiscard]]
 	bool isValid() const noexcept {
 		return handle != nullptr;
 	}
 
-	const std::string& getError() noexcept {
+	void clearError() noexcept {
+		errorMessage.clear();
+	}
+	[[nodiscard]]
+	const std::string& getError() const noexcept {
 		return errorMessage;
+	}
+	[[nodiscard]]
+	bool hasError() const noexcept {
+		return !errorMessage.empty();
 	}
 
 private:

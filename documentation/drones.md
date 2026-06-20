@@ -37,21 +37,22 @@ To make it show automatically in the selection window put it in `assets/Drones`.
 ### Config.json
 The `config.json` file contains the properties of the drone, these include:
 * `name`: The name of the drone, this is used for display purposes and to identify the drone.
-* `description`: A short description of the drone, this is used for display purposes.
-* `model`: A custom path to the model, if not specified it will default to `model.obj` in the same folder.
+* *`description`: A short description of the drone, this is used for display purposes.
+* *`model`: A custom path to the model, if not specified it will default to `model.obj` in the same folder.
 * `mass`: The mass of the drone, this is used for physics calculations.
 * `inertiaTensor`: The inertia tensor of the drone, this is used for physics calculations.
-* `modelScale`: The scale of the model, this is used for rendering.
-* `modelRotation`: The rotation of the model, this is used for rendering.
-* `modelColor`: The color of the model, this is used for rendering.
+* *`modelScale`: The scale of the model, this is used for rendering.
+* *`modelRotation`: The rotation of the model, this is used for rendering.
 * `engines`: An array of engines, each engine has the following properties:
   * `id`: The id of the engine, this is used to identify the engine in the control code.
   * `position`: The position of the engine relative to the center of mass, this is used for physics calculations.
   * `maxThrust`: The maximum thrust produced by the engine, this is used for error checking user code.
-* `inputs`: An array of the inputs that can be used, each input has the following properties:
+* *`inputs`: An array of the inputs that can be used, each input has the following properties:
   * `name`: This name is used to identify it in the code.
   * `type`: The type of the input, se [DroneAPI.h](..\src\API\DroneAPI.h).
   * `default key` This is the default key for the input, for `axis2` it must be an array of 2 keys.
+
+__*__ is optional
 
 
 ### Control code
@@ -97,8 +98,8 @@ by the user but it is displayed as a point in the renderer. <br>
 The `getSettings` function outputs the settings of the drone that can be tweaked by the user.
 
 ### Errors
-When loading the drone it will fail silently and may crash the app if configured wrong.
-As opposed to a map witch has proper error handling.
+When loading a drone there is many checks that will happen and each fail will be in the console.
+
 
 ### Backward compatibility
 I don't plan on keeping any backward compatibility. 

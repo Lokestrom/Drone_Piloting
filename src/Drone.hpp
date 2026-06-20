@@ -4,6 +4,7 @@
 #include <optional>
 
 #include <glm/glm.hpp>
+#include "importJSONData.hpp"
 
 #include "rendering/gameObject.hpp"
 namespace API {
@@ -31,10 +32,21 @@ public:
 		glm::vec3 position;
 		glm::vec3 direction;
 	};
+	
+	Drone() noexcept = default;
+	
+	Drone(Drone&) = delete;
+	Drone& operator=(Drone&) = delete;
 
-	Drone(std::filesystem::path folderPath);
-	Drone(std::filesystem::path folderPath, API::DroneState state);
+	Drone(Drone&&) noexcept;
+	Drone& operator=(Drone&&) noexcept;
+	
 	~Drone() noexcept;
+
+	[[nodiscard]]
+	bool load(const std::filesystem::path& folderPath);
+	[[nodiscard]]
+	bool load(const std::filesystem::path& folderPath, const API::DroneState& state);
 
 	void update(bool active);
 
@@ -72,7 +84,15 @@ public:
 
 	settings::Settings _settings;
 private:
-	void load(std::filesystem::path folderPath);
+	[[nodiscard]]
+	bool _load(const std::filesystem::path& folderPath);
+
+	[[nodiscard]]
+	bool verifyFolder(const std::filesystem::path& folderPath) const;
+	[[nodiscard]]
+	bool verifyConfigFile(const Json& jsonData, const std::filesystem::path& folderPath) const;
+	[[nodiscard]]
+	bool verifyPlugin(const SharedLib& pluginLib) const;
 
 	vulkan::GameObject& getObject() const noexcept;
 

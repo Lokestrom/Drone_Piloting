@@ -121,12 +121,8 @@ void Map::unload() {
 }
 
 bool Map::verifyMapFolder(std::filesystem::path folderPath) const {
-	if (!std::filesystem::exists(folderPath)) {
-		Console::log(Console::Log::Type::error, "Map folder does not exist: " + folderPath.string());
-		return false;
-	}
 	if (!std::filesystem::is_directory(folderPath)) {
-		Console::log(Console::Log::Type::error, "Map folder is not a directory: " + folderPath.string());
+		Console::log(Console::Log::Type::error, "Map folder does not exist: " + folderPath.string());
 		return false;
 	}
 	if (!std::filesystem::exists(folderPath / "config.json")) {
@@ -152,6 +148,9 @@ bool Map::verifyConfigFile(Json jsonData, std::filesystem::path folderPath) cons
 	else if (!isString(jsonData["name"])) {
 		Console::log(Console::Log::Type::error, "Config file 'name' field is not a string");
 		errorHit();
+	}
+	else if (jsonData["name"].get<std::string>().empty()) {
+		Console::log(Console::Log::Type::warning, "Map name is empty");
 	}
 
 	if (!jsonData.contains("lightSource")) {

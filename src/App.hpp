@@ -37,7 +37,8 @@ public:
 		return ubo;
 	}
 
-	static void swapDrone(std::filesystem::path folderPath) { getCurrentPlayer().SwapDrone(folderPath); }
+	[[nodiscard]]
+	static bool swapDrone(std::filesystem::path folderPath) { return getCurrentPlayer().SwapDrone(folderPath); }
 	[[nodiscard]]
 	static bool swapMap(std::filesystem::path folderPath) {
 		map.unload();
@@ -52,7 +53,7 @@ public:
 	}
 	[[nodiscard]] 
 	static const std::vector<std::unique_ptr<Player>>& getPlayers() noexcept { return players; }
-	static void swapPlayer(const std::string& name) noexcept;
+	static void swapToPlayer(const std::string& name) noexcept;
 	static void addPlayer(const std::string& name);
 	static void removePlayer(const std::string& name) noexcept;
 	[[nodiscard]]

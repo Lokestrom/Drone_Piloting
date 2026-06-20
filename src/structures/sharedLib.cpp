@@ -1,5 +1,7 @@
 #include "sharedLib.hpp"
 
+#include <assert.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -8,8 +10,10 @@
 
 SharedLib::SharedLib(std::filesystem::path path) noexcept 
 	: errorMessage("") {
+	assert(path.has_extension() == false && "path should not have an extention since it is handled here");
 #ifdef _WIN32
 	path += ".dll";
+	assert(std::filesystem::is_regular_file(path) && "path is not a file");
 	static_assert(sizeof(LPSTR) == sizeof(const char*));
 	handle = LoadLibraryA(path.string().c_str());
 	if (!handle) {
@@ -39,12 +43,36 @@ SharedLib::SharedLib(std::filesystem::path path) noexcept
 	}
 #else
 	path += ".so";
+	assert(std::filesystem::is_regular_file(path) && "path is not a file");
 	dlerror(); // clear
 	handle = dlopen(path.string().c_str(), RTLD_NOW);
 	if (!handle) {
 		errorMessage = dlerror();
 	}
 #endif
+}
+
+SharedLib::SharedLib(SharedLib&& other) noexcept
+	: handle(other.handle)
+	, errorMessage(std::move(other.errorMessage)) {
+	other.handle = nullptr;
+}
+
+SharedLib& SharedLib::operator=(SharedLib&& other) noexcept {
+	if (this == &other) {
+		return *this;
+	}
+	if (handle != nullptr) {
+#ifdef _WIN32
+		FreeLibrary((HMODULE)handle);
+#else
+		dlclose(handle);
+#endif
+	}
+	handle = other.handle;
+	errorMessage = std::move(other.errorMessage);
+	other.handle = nullptr;
+	return *this;
 }
 
 SharedLib::~SharedLib() noexcept {

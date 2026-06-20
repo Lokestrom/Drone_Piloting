@@ -90,7 +90,7 @@ void App::startup() {
 	addPlayer("Default");
 	auto& player = getCurrentPlayer();
 	try {
-		player.SwapDrone(ASSET_DIR "drones/testDrone");
+		(void)player.SwapDrone(ASSET_DIR "drones/testDrone");
 	}
 	catch (std::exception& e) {
 		Console::log(Console::Log::Type::error, std::string("Failed to load default drone with: ") + e.what());
@@ -296,7 +296,7 @@ void App::createSettings() {
 }
 
 
-void App::swapPlayer(const std::string& name) noexcept {
+void App::swapToPlayer(const std::string& name) noexcept {
 	auto playerNameCheck = [&name](const std::unique_ptr<Player>& player) noexcept {
 		return name == player->name();
 	};

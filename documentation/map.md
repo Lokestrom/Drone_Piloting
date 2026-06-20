@@ -44,7 +44,6 @@ With 142 different materials and 173 different geometries.
 
 ### Errors
 When loading the map there is many checks that will happen and each fail will be in the console.
-A bad map wil not crash the application as opposed to a drone that can.
 
 ### Backward compatibility
 I don't plan on keeping any backward compatibility. 

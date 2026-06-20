@@ -14,6 +14,9 @@ private:
 
 	void renderFolder(const std::filesystem::path& droneFolder);
 
+	void selectFolder(const std::filesystem::path& droneFolder);
+
 	// make this a vector of folders
 	std::filesystem::path folder;
+	std::filesystem::path lastFailedDrone;
 };

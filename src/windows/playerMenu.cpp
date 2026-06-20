@@ -58,7 +58,7 @@ void PlayerMenuWindow::_render() {
 			continue;
 		}
 		if (ImGui::Button(("Select##" + player->name()).c_str())) {
-			App::swapPlayer(player->name());
+			App::swapToPlayer(player->name());
 		}
 		ImGui::SameLine();
 		// TODO: make indexed or use ptr, avoids heap allocation

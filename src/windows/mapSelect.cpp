@@ -2,6 +2,7 @@
 
 #include "../App.hpp"
 #include "../structures/fileExplorer.hpp"
+#include "../console.hpp"
 
 #include <fstream>
 #include <json.hpp>
@@ -57,11 +58,13 @@ void MapSelectWindow::_render() {
 }
 
 void MapSelectWindow::renderFolder(const std::filesystem::path& mapFolder) {
+	// TODO: create user feed back for failed file open and json
 	std::ifstream file(mapFolder / "config.json");
-	assert(file && "Cant open config, callers responsibility to check");
+	if (!file) {
+		return;
+	}
 
 	Json jsonData;
-
 	try {
 		jsonData = Json::parse(file, nullptr, true, true);
 	}
@@ -94,8 +97,15 @@ void MapSelectWindow::renderFolder(const std::filesystem::path& mapFolder) {
 void MapSelectWindow::selectFolder(const std::filesystem::path& mapFolder) {
 	loadedMap = mapFolder;
 	failed = false;
-	if (!App::swapMap(mapFolder)) {
-		failed = true;
-		ImGui::OpenPopup("Map failed to load");
+	try {
+		if (!App::swapMap(mapFolder)) {
+			failed = true;
+		}
 	}
+	catch (std::exception& e) {
+		failed = true;
+		Console::log(Console::Log::Type::error, std::string("Hit an exception when trying to load map: ") + e.what());
+	}
+	if (failed)
+		ImGui::OpenPopup("Drone failed to load");
 }

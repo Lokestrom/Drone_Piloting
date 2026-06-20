@@ -10,7 +10,6 @@
 class Player {
 public:
 	Player(const std::string& name) noexcept;
-	Player(const std::string& name, std::filesystem::path folderPath);
 
 	Player(Player&) = delete;
 	Player& operator=(Player&) = delete;
@@ -18,7 +17,8 @@ public:
 	Player(Player&&) noexcept = default;
 	Player& operator=(Player&&) noexcept = delete;
 
-	void SwapDrone(std::filesystem::path folderPath);
+	[[nodiscard]]
+	bool SwapDrone(std::filesystem::path folderPath) noexcept;
 	void releaseDrone();
 
 	[[nodiscard]]

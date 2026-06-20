@@ -1,5 +1,7 @@
 #include "Player.hpp"
 
+#include "console.hpp"
+
 Player::Player(const std::string& name) noexcept
 	: _name(name)
 	, _camera()
@@ -9,23 +11,34 @@ Player::Player(const std::string& name) noexcept
 	_camera.updateViewMatrix();
 }
 
-Player::Player(const std::string& name, std::filesystem::path folderPath)
-	: _name(name)
-	, _drone(folderPath)
-	, _camera() {
-	_camera.getPositionRef() = glm::vec3(0, 2, 0);
-	_camera.updateViewMatrix();
-}
-
-void Player::SwapDrone(std::filesystem::path folderPath) {
-	if (!_drone.has_value()) {
-		_camera.setState(vulkan::Camera::State::Orbit);
-		_drone.emplace(folderPath);
-		return;
+bool Player::SwapDrone(std::filesystem::path folderPath) noexcept {
+	try {
+		if (!_drone.has_value()) {
+			_camera.setState(vulkan::Camera::State::Orbit);
+			_drone.emplace();
+			if (!_drone->load(folderPath)) {
+				_camera.setState(vulkan::Camera::State::FreeCAM);
+				_drone.reset();
+				return false;
+			}
+			return true;
+		}
+		API::DroneState state = _drone->getState();
+		_drone.reset();
+		_drone.emplace();
+		if (!_drone->load(folderPath, state)) {
+			_camera.setState(vulkan::Camera::State::FreeCAM);
+			_drone.reset();
+			return false;
+		}
+		return true;
 	}
-	API::DroneState state = _drone->getState();
-	_drone.reset();
-	_drone.emplace(folderPath, state);
+	catch (std::exception& e) {
+		_camera.setState(vulkan::Camera::State::FreeCAM);
+		_drone.reset();
+		Console::log(Console::Log::Type::error, std::string("Hit an exception when trying to load drone: ") + e.what());
+		return false;
+	}
 }
 
 void Player::releaseDrone() {

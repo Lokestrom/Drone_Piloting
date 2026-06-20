@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <unordered_set>
 
 #include <json.hpp>
 #include <glm/glm.hpp>
@@ -11,11 +12,8 @@
 
 #include "App.hpp"
 #include "Settings.hpp"
-#include "importJSONData.hpp"
 #include "gui/settingsGui.hpp"
 #include "console.hpp"
-
-using Json = nlohmann::json;
 
 using Axis2InputT = std::pair<ImGuiKey, ImGuiKey>;
 
@@ -24,6 +22,11 @@ constexpr std::string_view axis1TypeName = "axis1";
 constexpr std::string_view axis2TypeName = "axis2";
 
 namespace {
+[[nodiscard]]
+bool isInputTypeName(const std::string& type) noexcept {
+	return type == buttonTypeName || type == axis1TypeName || type == axis2TypeName;
+}
+
 [[nodiscard]]
 ImGuiKey getKeyFromName(std::string name) {
 	assert(!name.empty() && "input name is empty");
@@ -39,7 +42,6 @@ ImGuiKey getKeyFromName(std::string name) {
 			return static_cast<ImGuiKey>(i);
 		}
 	}
-	assert(false && "Cant find the key");
 	return ImGuiKey_None;
 }
 
@@ -195,16 +197,34 @@ void setAxis2Way(const std::string& name, std::pair<ImGuiKey, ImGuiKey>& keys) {
 	}
 }
 
+[[nodiscard]] 
+std::string_view getLibPath() noexcept {
+#ifdef _DEBUG
+	return "Debug/control";
+#else
+	return "Release/control";
+#endif
 }
 
-Drone::Drone(std::filesystem::path folderPath)
-	: _angularMomentum(0.0f)
-	, _velocity(0.0f) {
-	load(folderPath);
+[[nodiscard]] 
+std::string_view getLibExtention() noexcept {
+#ifdef WIN32
+	return ".dll";
+#else
+	return ".so";
+#endif
 }
 
-Drone::Drone(std::filesystem::path folderPath, API::DroneState state) {
-	load(folderPath);
+}
+
+bool Drone::load(const std::filesystem::path& folderPath) {
+	return _load(folderPath);
+}
+
+bool Drone::load(const std::filesystem::path& folderPath, const API::DroneState& state) {
+	if (!_load(folderPath)) {
+		return false;
+	}
 
 	getPosition() = glm::vec3{ state.position[0], state.position[1], state.position[2] };
 	_velocity = glm::vec3{ state.velocity[0], state.velocity[1], state.velocity[2] };
@@ -214,15 +234,32 @@ Drone::Drone(std::filesystem::path folderPath, API::DroneState state) {
 	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
 	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
 	_angularMomentum = angularVelocity;
+
+	return true;
 }
 
-void Drone::load(std::filesystem::path folderPath) {
-	std::ifstream file(folderPath / "config.json");
-	assert(file && "Cant open config, callers responsibility to check");
+bool Drone::_load(const std::filesystem::path& folderPath) {
+	assert(std::filesystem::is_directory(folderPath) && "folderPath is not a directory");
+	
+	if (!verifyFolder(folderPath))
+		return false;
 
-	Json jsonData = Json::parse(file, nullptr, true, true);
+	std::ifstream file;
+	file.exceptions(std::ios::failbit | std::ios::badbit);
+	file.open(folderPath / "config.json");
+	
+	Json jsonData;
+	try {
+		jsonData = Json::parse(file, nullptr, true, true);
+	}
+	catch (std::exception& e) {
+		Console::log(Console::Log::Type::error, std::string("Failed to parse config JSON with: ") + e.what());
+		return false;
+	}
+	
+	if (!verifyConfigFile(jsonData, folderPath))
+		return false;
 
-	// TODO: should check for if the fields are of the correct type
 	_mass = jsonData["mass"];
 	_invInertia_B = glm::inverse(getMat3(jsonData["inertiaTensor"]));
 
@@ -277,8 +314,7 @@ void Drone::load(std::filesystem::path folderPath) {
 			_inputType.push_back(API::InputType::Axis2Way);
 		}
 		else {
-			Console::log(Console::Log::Type::error, std::string("The input: ") + name + 
-				", had a wrong type: " + inputData["type"].get<std::string>());
+			assert(false && "A invalid type name made it here, not good. Fix error handeling");
 		}
 	}
 
@@ -298,6 +334,9 @@ void Drone::load(std::filesystem::path folderPath) {
 #else
 	_plugin.lib = SharedLib(folderPath / "Release/control");
 #endif
+	if (!verifyPlugin(_plugin.lib)) {
+		return false;
+	}
 	_plugin.update = static_cast<API::UpdateFn>(_plugin.lib.getFunction("update"));
 	if (_plugin.lib.hasFunction("getTargetPosition")) {
 		_plugin.getTargetPosition = static_cast<API::GetTargetPositionFn>(_plugin.lib.getFunction("getTargetPosition"));
@@ -308,10 +347,13 @@ void Drone::load(std::filesystem::path folderPath) {
 	if (_plugin.lib.hasFunction("getSettings")) {
 		_plugin.getSettings = static_cast<API::GetSettingsFn>(_plugin.lib.getFunction("getSettings"));
 	}
+
+	return true;
 }
 
 Drone::~Drone() noexcept {
-	vulkan::GameObjectContainer::Remove(objectID);
+	if (objectID != 0)
+		vulkan::GameObjectContainer::Remove(objectID);
 }
 
 void Drone::update(bool active) {
@@ -459,4 +501,278 @@ void Drone::populateInput() noexcept {
 			assert(false && "Not all API input types are accounted for");
 		}
 	}
+}
+
+bool Drone::verifyFolder(const std::filesystem::path& folderPath) const {
+	bool valid = true;
+	size_t errorCount = 0;
+
+	auto errorHit = [&]() {
+		valid = false;
+		errorCount++;
+	};
+
+	if (!std::filesystem::is_directory(folderPath)) {
+		Console::log(Console::Log::Type::error, "Drone folder does not exist: " + folderPath.string());
+		return false;
+	}
+	if (!std::filesystem::exists(folderPath / "config.json")) {
+		Console::log(Console::Log::Type::error, "Drone folder does not contain config.json: " + folderPath.string());
+		errorHit();
+	}
+	if (!std::filesystem::exists((folderPath / getLibPath()).string() + std::string(getLibExtention()))) {
+		// How is string + string_view only introduced in 26
+		Console::log(Console::Log::Type::error, 
+			std::string("Drone folder does not contain a control script '") + 
+			std::string(getLibPath()) + std::string(getLibExtention()) + "': " + folderPath.string()); 
+			//std::string(getLibPath()) + std::string(getLibExtention()) + "': " + folderPath.string());
+		errorHit();
+	}
+	if (!valid) {
+		Console::log(Console::Log::Type::message, "Drone folder " + folderPath.string() + " is not valid. Found " + std::to_string(errorCount) + " errors.");
+	}
+
+	return valid;
+}
+
+bool Drone::verifyConfigFile(const Json& jsonData, const std::filesystem::path& folderPath) const {
+	bool valid = true;
+	size_t errorCount = 0;
+
+	auto errorHit = [&]() {
+		valid = false;
+		errorCount++;
+	};
+
+	if (!jsonData.contains("name")) {
+		Console::log(Console::Log::Type::error, "Config file does not contain 'name' field");
+		errorHit();
+	}
+	else if (!isString(jsonData["name"])) {
+		Console::log(Console::Log::Type::error, "Config file 'name' field is not a string");
+		errorHit();
+	}
+	else if (jsonData["name"].get<std::string>().empty()) {
+		Console::log(Console::Log::Type::warning, "Drone name is empty");
+	}
+
+	if (jsonData.contains("model")) {
+		if (!isString(jsonData["model"])) {
+			Console::log(Console::Log::Type::error, "Config file 'model' field is not a string");
+			errorHit();
+		}
+		else {
+			if (!std::filesystem::is_regular_file(folderPath / jsonData["model"].get<std::string>())) {
+				Console::log(Console::Log::Type::error, "Drone config file 'model' field does not point to a file: " + jsonData["model"].get<std::string>() + ", Full path: " + (folderPath / jsonData["model"].get<std::string>()).string());
+				errorHit();
+			}
+			else if (jsonData["model"].get<std::filesystem::path>().extension() != ".obj") {
+				Console::log(Console::Log::Type::error, "Drone config file 'model' field does not have a valid extension, must be .obj: " + jsonData["model"].get<std::string>() + ", Full path: " + (folderPath / jsonData["model"].get<std::string>()).string());
+				errorHit();
+			}
+		}
+	}
+	else if(!std::filesystem::is_regular_file(folderPath / "model.obj")) {
+		Console::log(Console::Log::Type::error, "Drone config file has no field 'model' using default name model.obj, but found no model.obj file");
+		errorHit();
+	}
+
+	if (!jsonData.contains("mass")) {
+		Console::log(Console::Log::Type::error, "Drone config file does not contain 'mass' field");
+		errorHit();
+	}
+	else if (!isNumber(jsonData["mass"])) {
+		Console::log(Console::Log::Type::error, "Drone config file 'mass' field is not a number");
+		errorHit();
+	}
+	else if (jsonData["mass"].get<float>() <= 0.0f) {
+		Console::log(Console::Log::Type::error, "Drone config file 'mass' field must be greater than 0");
+		errorHit();
+	}
+
+	if (!jsonData.contains("inertiaTensor")) {
+		Console::log(Console::Log::Type::error, "Drone config file does not contain 'inertiaTensor' field");
+		errorHit();
+	}
+	else if (!isMat3(jsonData["inertiaTensor"])) {
+		Console::log(Console::Log::Type::error, "Drone config file 'inertiaTensor' field is not a mat3");
+		errorHit();
+	}
+	else if (std::abs(glm::determinant(getMat3(jsonData["inertiaTensor"]))) <= 1e-6f) {
+		Console::log(Console::Log::Type::error, "Drone config file 'inertiaTensor' field must be invertible");
+		errorHit();
+	}
+
+	if (jsonData.contains("modelPosition") && !isVec3(jsonData["modelPosition"])) {
+		Console::log(Console::Log::Type::error, "Drone config file 'modelPosition' field is not a vec3");
+		errorHit();
+	}
+	if (jsonData.contains("modelRotation") && !isQuat(jsonData["modelRotation"])) {
+		Console::log(Console::Log::Type::error, "Drone config file 'modelRotation' field is not a quat");
+		errorHit();
+	}
+	if (jsonData.contains("modelScale") && !isVec3(jsonData["modelScale"])) {
+		Console::log(Console::Log::Type::error, "Drone config file 'modelScale' field is not a vec3");
+		errorHit();
+	}
+
+	if (!jsonData.contains("engines")) {
+		Console::log(Console::Log::Type::error, "Drone config file does not contain 'engines' field");
+		errorHit();
+	}
+	else if (!jsonData["engines"].is_array()) {
+		Console::log(Console::Log::Type::error, "Drone config file 'engines' field is not an array");
+		errorHit();
+	}
+	else if (jsonData["engines"].empty()) {
+		Console::log(Console::Log::Type::error, "Drone config file 'engines' field must contain at least one engine");
+		errorHit();
+	}
+	else {
+		std::unordered_set<uint64_t> engineIds;
+		size_t index = 0;
+		for (const Json& engine : jsonData["engines"]) {
+			if (!engine.is_object()) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": Is not an object");
+				errorHit();
+				index++;
+				continue;
+			}
+
+			if (!engine.contains("id")) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": Does not contain 'id' field");
+				errorHit();
+			}
+			else if (!engine["id"].is_number_unsigned()) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'id' field is not a non-negative integer");
+				errorHit();
+			}
+			else {
+				uint64_t id = engine["id"];
+				if (!engineIds.insert(id).second) {
+					Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": Duplicate engine id " + std::to_string(id));
+					errorHit();
+				}
+			}
+
+			if (!engine.contains("maxThrust")) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": Does not contain 'maxThrust' field");
+				errorHit();
+			}
+			else if (!isNumber(engine["maxThrust"])) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'maxThrust' field is not a number");
+				errorHit();
+			}
+			else if (engine["maxThrust"].get<float>() < 0.0f) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'maxThrust' field must be greater than or equal to 0");
+				errorHit();
+			}
+
+			if (!engine.contains("position")) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": Does not contain 'position' field");
+				errorHit();
+			}
+			else if (!isVec3(engine["position"])) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'position' field is not a vec3");
+				errorHit();
+			}
+
+			if (engine.contains("forceDirection") && !isVec3(engine["forceDirection"])) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'forceDirection' field is not a vec3");
+				errorHit();
+			}
+			index++;
+		}
+	}
+
+	if (jsonData.contains("inputs") && !jsonData["inputs"].is_array()) {
+		Console::log(Console::Log::Type::error, "Drone config file 'inputs' field is not an array");
+		errorHit();
+	}
+	else if (jsonData.contains("inputs")) {
+		size_t index = 0;
+		for (const Json& input : jsonData["inputs"]) {
+			if (!input.is_object()) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": Is not an object");
+				errorHit();
+				index++;
+				continue;
+			}
+
+			if (!input.contains("name")) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": Does not contain 'name' field");
+				errorHit();
+			}
+			else if (!isString(input["name"])) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'name' field is not a string");
+				errorHit();
+			}
+			else if (input["name"].get<std::string>().empty()) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'name' field must not be empty");
+				errorHit();
+			}
+
+			if (!input.contains("type")) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": Does not contain 'type' field");
+				errorHit();
+			}
+			else if (!isString(input["type"])) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'type' field is not a string");
+				errorHit();
+			}
+			else if (!isInputTypeName(input["type"].get<std::string>())) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'type' field must be button, axis1, or axis2");
+				errorHit();
+			}
+
+			if (!input.contains("default key")) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": Does not contain 'default key' field");
+				errorHit();
+			}
+			else if (input.contains("type") && isString(input["type"]) && input["type"].get<std::string>() == axis2TypeName) {
+				if (!input["default key"].is_array() || input["default key"].size() != 2 || !isString(input["default key"][0]) || !isString(input["default key"][1])) {
+					Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'default key' field must be an array of two strings for axis2 inputs");
+					errorHit();
+				}
+				else {
+					if (getKeyFromName(input["default key"][0].get<std::string>()) == ImGuiKey_None) {
+						Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'default key' field 1 contains an unknown key");
+						errorHit();
+					}
+
+					if( getKeyFromName(input["default key"][1].get<std::string>()) == ImGuiKey_None) {
+						Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'default key' field 2 contains an unknown key");
+						errorHit();
+					}
+				}
+			}
+			else if (!isString(input["default key"])) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'default key' field is not a string");
+				errorHit();
+			}
+			else if (getKeyFromName(input["default key"].get<std::string>()) == ImGuiKey_None) {
+				Console::log(Console::Log::Type::error, "Input " + std::to_string(index) + ": 'default key' field contains an unknown key");
+				errorHit();
+			}
+			index++;
+		}
+	}
+
+	if (!valid) {
+		Console::log(Console::Log::Type::message, "Drone config file in " + folderPath.string() + " is not valid. Found " + std::to_string(errorCount) + " errors.");
+	}
+
+	return valid;
+}
+
+bool Drone::verifyPlugin(const SharedLib& pluginLib) const {
+	if (!pluginLib.isValid()) {
+		Console::log(Console::Log::Type::error, "Drone script has not loaded correctly, error: " + pluginLib.getError());
+		return false;
+	}
+	if (!pluginLib.hasFunction("update")) {
+		Console::log(Console::Log::Type::error, "Drone script has no function 'update'. OS error: " + pluginLib.getError());
+		return false;
+	}
+	return true;
 }
