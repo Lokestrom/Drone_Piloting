@@ -7,6 +7,10 @@
 #include "mapSelect.hpp"
 #include "playerMenu.hpp"
 
+void createWindowsSettings() {
+	DroneSelectWindow::createSettings();
+}
+
 void setupWindows() {
 	// Remember to add window to the tool bar.
 

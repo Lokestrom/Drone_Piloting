@@ -25,9 +25,9 @@ Drone getDrone(const char* dronePath) {
 		engine.position[0] = engineJson["position"][0];
 		engine.position[1] = engineJson["position"][1];
 		engine.position[2] = engineJson["position"][2];
-		engine.forceDirection[0] = engineJson["forceDirection"][0];
-		engine.forceDirection[1] = engineJson["forceDirection"][1];
-		engine.forceDirection[2] = engineJson["forceDirection"][2];
+		engine.direction[0] = engineJson["direction"][0];
+		engine.direction[1] = engineJson["direction"][1];
+		engine.direction[2] = engineJson["direction"][2];
 		engine.maxThrust = engineJson["maxThrust"];
 		drone.engines.push_back(engine);
 	}
@@ -40,7 +40,7 @@ UserInputHandler::UserInputHandler(const std::vector<Handle*>& handles)
 }
 
 namespace {
-bool isValid(const UserInput& input, const std::vector<UserInputHandler::Handle*>& handles) {
+bool isValid(const UserInput& input, const std::vector<UserInputHandler::Handle*>& handles) noexcept {
 	for (size_t i = 0; i < input.size; ++i) {
 		auto checkName = [&input, &i](UserInputHandler::Handle* handle) {
 			return input.names[i] == handle->name;
@@ -64,7 +64,7 @@ bool isValid(const UserInput& input, const std::vector<UserInputHandler::Handle*
 
 }
 
-void UserInputHandler::startUp(const UserInput& input) {
+void UserInputHandler::startUp(const UserInput& input) noexcept {
 	assert(isValid(input, handles) && 
 		"There is unaccounted for input, there is some inputs in the config not used by the program or vise versa"
 		"Also check for spelling mistakes"
@@ -90,18 +90,21 @@ void UserInputHandler::startUp(const UserInput& input) {
 
 }
 
-float UserInputHandler::HandleAxis1::getValue() const {
+float UserInputHandler::HandleAxis1::getValue() const noexcept {
+	assert(valuePtr && "Value pointer must be valid");
 	assert((0 <= *static_cast<float*>(valuePtr) && *static_cast<float*>(valuePtr) <= 1) 
 		&& "A float of axis 1 must have a value in the range [0,1]");
 	return *static_cast<float*>(valuePtr);
 }
 
-float UserInputHandler::HandleAxis2::getValue() const {
+float UserInputHandler::HandleAxis2::getValue() const noexcept {
+	assert(valuePtr && "Value pointer must be valid");
 	assert((-1 <= *static_cast<float*>(valuePtr) && *static_cast<float*>(valuePtr) <= 1)
 		&& "A float of axis 2 must have a value in the range [-1,1]");
 	return *static_cast<float*>(valuePtr);
 }
 
-ButtonStateCpp UserInputHandler::HandleButton::getValue() const {
+ButtonStateCpp UserInputHandler::HandleButton::getValue() const noexcept {
+	assert(valuePtr && "Value pointer must be valid");
 	return *static_cast<ButtonStateCpp*>(valuePtr);
 }

@@ -26,16 +26,20 @@ void App::generateWindows() {
 		if (inMenu) {
 			for (auto i = 0uz; i < menuWindows.size(); ++i) {
 				auto window = menuWindows[i];
-				if (!window->isOpen())
+				if (!window->isOpen()) {
 					menuWindows.erase(menuWindows.begin() + i--);
+					continue;
+				}
 				window->render();
 			}
 		}
 		else {
 			for (auto i = 0uz; i < overlayWindows.size(); ++i) {
 				auto window = overlayWindows[i];
-				if (!window->isOpen())
+				if (!window->isOpen()) {
 					overlayWindows.erase(overlayWindows.begin() + i--);
+					continue;
+				}
 				window->render();
 			}
 		}

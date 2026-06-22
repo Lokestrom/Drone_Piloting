@@ -9,6 +9,10 @@
 
 using Json = nlohmann::json;
 
+namespace {
+constexpr const char* errorPopupName = "Map failed to load";
+}
+
 MapSelectWindow::MapSelectWindow() noexcept
 	: gui::ImGuiWindow("Map select", true)
 	, folder(ASSET_DIR "Maps/") {
@@ -18,7 +22,7 @@ void MapSelectWindow::_render() {
 #ifdef _WIN32
 	if (ImGui::Button("Find map")) {
 		std::filesystem::path newFolder = OpenFileExplorer();
-		if (!newFolder.empty()) {
+		if (!newFolder.empty() && std::filesystem::is_directory(newFolder)) {
 			selectFolder(newFolder);
 		}
 	}
@@ -37,7 +41,7 @@ void MapSelectWindow::_render() {
 		renderFolder(entry.path());
 	}
 
-	if (ImGui::BeginPopupModal("Map failed to load")) {
+	if (ImGui::BeginPopupModal(errorPopupName)) {
 		std::string message =
 			"The map:\n\"" + loadedMap.string() +
 			"\"\nfailed to load.\n\nCheck the console for errors.";
@@ -48,6 +52,7 @@ void MapSelectWindow::_render() {
 
 		if (ImGui::Button("Open console")) {
 			gui::App::openWindow("Console");
+			ImGui::CloseCurrentPopup();
 		}
 		if (ImGui::Button("OK")) {
 			ImGui::CloseCurrentPopup();
@@ -107,5 +112,5 @@ void MapSelectWindow::selectFolder(const std::filesystem::path& mapFolder) {
 		Console::log(Console::Log::Type::error, std::string("Hit an exception when trying to load map: ") + e.what());
 	}
 	if (failed)
-		ImGui::OpenPopup("Drone failed to load");
+		ImGui::OpenPopup(errorPopupName);
 }

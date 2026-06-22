@@ -13,7 +13,7 @@ class TreadWorkPool {
 public:
 	using StartupFn = std::function<ThreadState(PoolState&)>;
 	using UpdateFn = std::function<bool(PoolState&, ThreadState&)>;
-	using CleanupFn = std::function<void(PoolState&, ThreadState&)>;
+	using CleanupFn = std::function<void(PoolState&, ThreadState&)>; // prefer making this noexcept
 
 	TreadWorkPool(size_t threadCount, PoolState poolState, UpdateFn update, StartupFn startup = nullptr, CleanupFn cleanup = nullptr);
 	~TreadWorkPool();
@@ -62,20 +62,26 @@ private:
 				if (!_updateFn(_poolState, state))
 					break;
 			}
-			if (_cleanupFn)
-				_cleanupFn(_poolState, state);
-
-			std::thread::id thisId = std::this_thread::get_id();
-			for (Thread& thread : _threads) {
-				if (thread.thread.get_id() == thisId) {
-					thread.completed = true;
-					return;
-				}
-			}
 		}
 		catch (...) {
 			std::lock_guard<std::mutex> lock(_exMutex);
 			_threadException = std::current_exception();
+		}
+		try {
+			if (_cleanupFn)
+				_cleanupFn(_poolState, state);
+		}
+		catch (...) {
+			std::lock_guard<std::mutex> lock(_exMutex);
+			_threadException = std::current_exception();
+		}
+
+		std::thread::id thisId = std::this_thread::get_id();
+		for (Thread& thread : _threads) {
+			if (thread.thread.get_id() == thisId) {
+				thread.completed = true;
+				return;
+			}
 		}
 	}
 

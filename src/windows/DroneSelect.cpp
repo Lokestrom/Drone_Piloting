@@ -3,22 +3,41 @@
 #include "../App.hpp"
 #include "../structures/fileExplorer.hpp"
 #include "../console.hpp"
+#include "../gui/settingsGui.hpp"
 
 #include <fstream>
 #include <json.hpp>
 
 using Json = nlohmann::json;
 
+namespace {
+constexpr const char* hideDroneSafetyWarningSetting = "Hide drone selection unsafe warning";
+constexpr const char* droneSafetyWarningPopup = "Drone selection safety warning";
+}
+
 DroneSelectWindow::DroneSelectWindow() noexcept 
 	: gui::ImGuiWindow("Drone select", true)
-	, folder(ASSET_DIR "Drones/") {
+	, folder(ASSET_DIR "Drones/")
+	, hideDroneSafetyWarning(
+		  App::settings.get("Safety")
+			.get<bool>(hideDroneSafetyWarningSetting)
+			.getHandle()) {
+}
+
+void DroneSelectWindow::createSettings() {
+	auto& safetySettings = App::settings.get("Safety");
+	safetySettings.emplace<settings::Value<bool>>(hideDroneSafetyWarningSetting,
+		false, settings::Value<bool>::setFunctionT(gui::checkbox));
 }
 
 void DroneSelectWindow::_render() {
+	if (!hideDroneSafetyWarning.get() && ImGui::IsWindowAppearing()) {
+		ImGui::OpenPopup(droneSafetyWarningPopup);
+	}
 #ifdef _WIN32
 	if (ImGui::Button("Find drone")) {
 		std::filesystem::path newFolder = OpenFileExplorer();
-		if (!newFolder.empty()) {
+		if (!newFolder.empty() && std::filesystem::is_directory(newFolder)) {
 			selectFolder(newFolder);
 		}
 	}
@@ -36,6 +55,24 @@ void DroneSelectWindow::_render() {
 		renderFolder(entry.path());
 	}
 
+	if (ImGui::BeginPopupModal(droneSafetyWarningPopup)) {
+		ImGui::TextWrapped(
+			"Selecting a drone will load compiled code from the drone folder. "
+			"There is no guards and the binary has the same premisions as this app. "
+			"Only select drone folders from sources you trust."
+			"This is the only warning and when selecting the drone it will just load.");
+
+		ImGui::Separator();
+
+		ImGui::Checkbox("Don't show this warning again", &hideDroneSafetyWarning.get());
+
+		if (ImGui::Button("Understand")) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+
 	if (ImGui::BeginPopupModal("Drone failed to load")) {
 		std::string message =
 			"The drone:\n\"" + lastFailedDrone.string() +
@@ -47,6 +84,7 @@ void DroneSelectWindow::_render() {
 
 		if (ImGui::Button("Open console")) {
 			gui::App::openWindow("Console");
+			ImGui::CloseCurrentPopup();
 		}
 		if (ImGui::Button("OK")) {
 			ImGui::CloseCurrentPopup();

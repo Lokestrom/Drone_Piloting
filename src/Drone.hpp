@@ -32,7 +32,7 @@ public:
 		glm::vec3 position;
 		glm::vec3 direction;
 	};
-	
+
 	Drone() noexcept = default;
 	
 	Drone(Drone&) = delete;
@@ -99,7 +99,7 @@ private:
 	void populateInput() noexcept;
 
 private:
-	vulkan::ID objectID;
+	vulkan::ID objectID = 0;
 
 	glm::mat3 _invInertia_B;
 

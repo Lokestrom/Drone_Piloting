@@ -6,25 +6,25 @@
 using Json = nlohmann::json;
 
 [[nodiscard]]
-bool isNumber(const Json& jsonObj);
+bool isNumber(const Json& jsonObj) noexcept;
 [[nodiscard]]
-bool isString(const Json& jsonObj);
+bool isString(const Json& jsonObj) noexcept;
 [[nodiscard]]
-bool isArray(const Json& jsonObj);
+bool isArray(const Json& jsonObj) noexcept;
 [[nodiscard]]
-bool isVec3(const Json& jsonObj);
+bool isVec3(const Json& jsonObj) noexcept;
 [[nodiscard]]
-bool isQuat(const Json& jsonObj);
+bool isQuat(const Json& jsonObj) noexcept;
 [[nodiscard]]
-bool isVec4(const Json& jsonObj);
+bool isVec4(const Json& jsonObj) noexcept;
 [[nodiscard]]
-bool isMat3(const Json& jsonObj);
+bool isMat3(const Json& jsonObj) noexcept;
 
 [[nodiscard]]
-glm::vec3 getVec3(const Json& jsonObj);
+glm::vec3 getVec3(const Json& jsonObj) noexcept;
 [[nodiscard]]
-glm::quat getQuat(const Json& jsonObj);
+glm::quat getQuat(const Json& jsonObj) noexcept;
 [[nodiscard]]
-glm::vec4 getVec4(const Json& jsonObj);
+glm::vec4 getVec4(const Json& jsonObj) noexcept;
 [[nodiscard]]
-glm::mat3 getMat3(const Json& jsonObj);
+glm::mat3 getMat3(const Json& jsonObj) noexcept;

@@ -33,7 +33,7 @@ ImColor toColor(glm::vec3 v) noexcept {
 void ConsoleWindow::print(const Console::Log& log) {
 	ImColor color{ 0, 0, 0 };
 	std::string prefix;
-	switch (log.type) {
+	switch (log.type()) {
 	case Console::Log::Type::message:
 		if (!_showMessages)
 			return;
@@ -63,7 +63,7 @@ void ConsoleWindow::print(const Console::Log& log) {
 
 	ImGui::PushTextWrapPos(0.0f);
 
-	ImGui::TextColored(color, (prefix + log.what).c_str());
+	ImGui::TextColored(color, (prefix + log.what()).c_str());
 	
 	ImGui::PopTextWrapPos();
 }

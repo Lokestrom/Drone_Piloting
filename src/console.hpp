@@ -10,21 +10,32 @@
 
 class Console {
 public:
+	class Log {
+		friend class Console;
 
-	struct Log {
-		enum class Type {
+	public:
+		enum class Type : short {
 			message,
 			warning,
 			error,
 			debug
 		};
-		Type type;
-		std::string what;
+		
+		const Type type() const noexcept { return _type; }
+		const std::string& what() const noexcept { return _what; }
+
+    private:
+		Log(Type type, const std::string& what)
+			: _type(type)
+			, _what(what) {}
+
+		const Type _type;
+		const std::string _what;
 	};
 
 	static void log(Log::Type type, const std::string& what) {
 		std::lock_guard<std::mutex> lock(mutex);
-		_logs.emplace_back(type, what);
+		_logs.emplace_back(Log(type, what));
 		if (type != Log::Type::message)
 			std::cout << (int)type << ": " << what << "\n";
 	}
@@ -35,8 +46,8 @@ public:
 	}
 
 	static void createConsoleLogDumpFile(std::string_view why) {
-		auto now = std::chrono::system_clock::now();
-		auto now_s = std::chrono::floor<std::chrono::seconds>(now);
+		const auto now = std::chrono::system_clock::now();
+		const auto now_s = std::chrono::floor<std::chrono::seconds>(now);
 
 		std::string filename = "drone_piloting_console_dump_" + 
 			std::to_string(std::chrono::system_clock::to_time_t(now)) + ".txt";
@@ -49,14 +60,13 @@ public:
 			<< "Logs:\n";
 
 		for (const Log& log : _logs) {
-			file << toString(log.type) << ": " << log.what << "\n";
+			file << toString(log.type()) << ": " << log.what() << "\n";
 		}
 		file.flush();
 		file.close();
 	}
 
 private: 
-
 	[[nodiscard]]
 	static std::string_view toString(Log::Type type) noexcept {
 		switch (type) {

@@ -1,6 +1,8 @@
 # Drones
 
 ## Using
+**When loading a drone it can run arbetrary code at the same privilege as the app, only load drones with scripts that you trust.**
+
 Pilot the drone using W, A, S, D, left shift, and space. <br>
 These can be exchanged for other buttons in the info window, joysticks are supported.
 But it is currently under development therefore it will be inconsistent 
@@ -47,6 +49,7 @@ The `config.json` file contains the properties of the drone, these include:
   * `id`: The id of the engine, this is used to identify the engine in the control code.
   * `position`: The position of the engine relative to the center of mass, this is used for physics calculations.
   * `maxThrust`: The maximum thrust produced by the engine, this is used for error checking user code.
+  * `direction`: The direction of the force the engine produses.
 * *`inputs`: An array of the inputs that can be used, each input has the following properties:
   * `name`: This name is used to identify it in the code.
   * `type`: The type of the input, se [DroneAPI.h](..\src\API\DroneAPI.h).
@@ -99,8 +102,7 @@ The `getSettings` function outputs the settings of the drone that can be tweaked
 
 ### Errors
 When loading a drone there is many checks that will happen and each fail will be in the console.
-
-
+The script might fail and that crach the app.
 ### Backward compatibility
 I don't plan on keeping any backward compatibility. 
 At some point i may begin adding a change log and deprecation warnings.

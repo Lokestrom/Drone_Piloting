@@ -1,5 +1,7 @@
 #include "fileExplorer.hpp"
 
+#include <filesystem>
+
 #ifdef _WIN32
 #include <shobjidl.h>
 #include <windows.h>
@@ -21,12 +23,14 @@ std::string OpenFileExplorer(HWND owner) {
 
 	IShellItem* psi;
 	if (!SUCCEEDED(pfd->GetResult(&psi))) {
-		psi->Release();
+		pfd->Release();
 		return "";
 	}
 
 	PWSTR path = nullptr;
 	if (!SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH, &path))) {
+		pfd->Release();
+		psi->Release();
 		return "";
 	}
 	char buffer[MAX_PATH];
@@ -36,6 +40,10 @@ std::string OpenFileExplorer(HWND owner) {
 
 	pfd->Release();
 	psi->Release();
+
+	if (!std::filesystem::exists(result)) {
+		return "";
+	}
 
 	return result;
 }

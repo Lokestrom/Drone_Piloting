@@ -159,6 +159,16 @@ public:
 		_container._refCount--;
 	}
 
+	ValueHandle(ValueHandle<T>& other) 
+		: _container(other._container){
+		_container._refCount++;
+	}
+
+	ValueHandle(ValueHandle<T>&& other)
+		: _container(other._container) {
+		_container._refCount++;
+	}
+
 	operator T() noexcept {
 		assert(_container._refCount > 0 && "Incorrect reference count to value");
 		return _container._value;

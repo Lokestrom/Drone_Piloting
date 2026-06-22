@@ -28,7 +28,7 @@ bool isInputTypeName(const std::string& type) noexcept {
 }
 
 [[nodiscard]]
-ImGuiKey getKeyFromName(std::string name) {
+ImGuiKey getKeyFromName(std::string name) noexcept {
 	assert(!name.empty() && "input name is empty");
 	name[0] = (char)std::toupper(name[0]);
 	for (size_t i = 0; i < name.length() - 1; i++) {
@@ -230,17 +230,20 @@ bool Drone::load(const std::filesystem::path& folderPath, const API::DroneState&
 	_velocity = glm::vec3{ state.velocity[0], state.velocity[1], state.velocity[2] };
 
 	getOrientation() = glm::quat{ state.orientation[0], state.orientation[1], state.orientation[2], state.orientation[3] };
+	glm::vec3 angularVelocity = glm::vec3{ state.angularVelocity[0], state.angularVelocity[1], state.angularVelocity[2] };
 	glm::mat3 R = glm::mat3_cast(getOrientation());
-	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
-	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
-	_angularMomentum = angularVelocity;
+	glm::mat3 invInertiaWorld = R * _invInertia_B * glm::transpose(R);
+	glm::vec3 unrotatedAngularVelocity = glm::rotate(glm::inverse(getOrientation()), angularVelocity);
 
+	_angularMomentum = glm::inverse(invInertiaWorld) * unrotatedAngularVelocity;
 	return true;
 }
 
 bool Drone::_load(const std::filesystem::path& folderPath) {
 	assert(std::filesystem::is_directory(folderPath) && "folderPath is not a directory");
+	assert(objectID == 0 && "There is already a drone loaded");
 	
+	objectID = 0;
 	if (!verifyFolder(folderPath))
 		return false;
 
@@ -262,10 +265,11 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 
 	_mass = jsonData["mass"];
 	_invInertia_B = glm::inverse(getMat3(jsonData["inertiaTensor"]));
+	_velocity = glm::vec3(0.0);
+	_angularMomentum = glm::vec3(0.0);
 
 	objectID = vulkan::GameObjectContainer::Add(vulkan::GameObject{
 		vulkan::ModelCache::loadModel(folderPath / jsonData["model"]),
-		// glm::vec3(2500.0, 0.0, -4500.0),
 		glm::vec3(0, 0, 0),
 		glm::quat(1, 0, 0, 0),
 		glm::vec3(1.0),
@@ -274,11 +278,11 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 		jsonData.contains("modelScale") ? getVec3(jsonData["modelScale"]) : glm::vec3(1.0) });
 
 	for (const auto& engineData : jsonData["engines"]) {
-		Engines engine{
+		Engines engine {
 			.id = engineData["id"],
 			.maxThrust = engineData["maxThrust"],
 			.position = getVec3(engineData["position"]),
-			.direction = glm::vec3(0, 1, 0)
+			.direction = getVec3(engineData["direction"])
 		};
 		_engines[engine.id] = engine;
 	}
@@ -360,8 +364,8 @@ void Drone::update(bool active) {
 	auto& obj = vulkan::GameObjectContainer::get(objectID);
 
 	glm::mat3 R = glm::mat3_cast(getOrientation());
-	glm::mat3 _invInertia = R * _invInertia_B * glm::transpose(R);
-	glm::vec3 angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
+	glm::mat3 invInertia = R * _invInertia_B * glm::transpose(R);
+	glm::vec3 angularVelocity = glm::rotate(getOrientation(), invInertia * _angularMomentum);
 
 	API::DroneState state = getState();
 	API::CommandBuffer commands{
@@ -380,28 +384,24 @@ void Drone::update(bool active) {
 	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0, -9.81, 0.0));
 	glm::vec3 torque = glm::vec3(0.0, 0.0, 0.0);
 
-	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces), glm::vec4(0, 1, 0, 1) });
-	for (int i = 0; i < commands.count; ++i) {
+	for (int i = 0; i < commands.count && commands.commands; ++i) {
 		const auto& command = commands.commands[i];
 
 		if (_engines.find(command.engineId) == _engines.end()) {
-			std::cerr << "Invalid engine ID: " << command.engineId << std::endl;
+			Console::log(Console::Log::Type::error, std::string("Invalid engine ID: ") + std::to_string(command.engineId));
 			continue;
 		}
 		if (std::abs(command.thrust) > _engines[command.engineId].maxThrust) {
-			std::cerr << "Thrust value " << command.thrust << " exceeds max thrust for engine " << command.engineId << std::endl;
+			Console::log(Console::Log::Type::warning, 
+				std::string("Thrust value ") + std::to_string(command.thrust) + " exceeds max thrust for engine " + std::to_string(command.engineId));
 			continue;
 		}
 		forces += _engines[command.engineId].direction * command.thrust;
 		torque += glm::cross(_engines[command.engineId].position, _engines[command.engineId].direction * command.thrust);
-
-		::App::renderVectors.push_back({ glm::rotate(getOrientation(), _engines[command.engineId].position) + obj.position,
-			glm::rotate(getOrientation(), _engines[command.engineId].direction * command.thrust) });
 	}
 
 	forces = glm::rotate(getOrientation(), forces);
 	// forces -= (glm::length(_velocity) * _velocity) / 10.0f;
-	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f, glm::vec4(0, 0, 1, 1) });
 
 	obj.position += _velocity * (float)App::getDeltaTime();
 	_velocity += (forces / _mass) * (float)App::getDeltaTime();
@@ -409,7 +409,7 @@ void Drone::update(bool active) {
 	_angularMomentum += torque * (float)App::getDeltaTime();
 	//_angularMomentum -= (glm::length(_angularMomentum) * _angularMomentum) / 10.0f;
 
-	angularVelocity = glm::rotate(getOrientation(), _invInertia * _angularMomentum);
+	angularVelocity = glm::rotate(getOrientation(), invInertia * _angularMomentum);
 
 	float angle = glm::length(angularVelocity) * (float)App::getDeltaTime();
 	if (angle > 1e-6f) {
@@ -429,6 +429,15 @@ void Drone::update(bool active) {
 	if (obj.position.y < -10 && _velocity.y < 0) {
 		obj.position.y = -10;
 		_velocity.y = 0;
+	}
+
+	// every render object refrencing the obj physics state must happen after the physics update
+	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f, glm::vec4(0, 0, 1, 1) });
+	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces), glm::vec4(0, 1, 0, 1) });
+	for (int i = 0; i < commands.count && commands.commands; ++i) {
+		const auto& command = commands.commands[i];
+		::App::renderVectors.push_back({ glm::rotate(getOrientation(), _engines[command.engineId].position) + obj.position,
+			glm::rotate(getOrientation(), _engines[command.engineId].direction * command.thrust) });
 	}
 }
 
@@ -501,6 +510,10 @@ void Drone::populateInput() noexcept {
 			assert(false && "Not all API input types are accounted for");
 		}
 	}
+	assert(_inputButtonStates.capacity() == _inputButtonStates.size() &&
+		   "There has been added button input states this is not alowd and it must stay the same size for the duration of its lifetime");
+	assert(_inputAxisStates.capacity() == _inputAxisStates.size() &&
+		   "There has been added axis input states this is not alowd and it must stay the same size for the duration of its lifetime");
 }
 
 bool Drone::verifyFolder(const std::filesystem::path& folderPath) const {
@@ -676,8 +689,16 @@ bool Drone::verifyConfigFile(const Json& jsonData, const std::filesystem::path& 
 				errorHit();
 			}
 
-			if (engine.contains("forceDirection") && !isVec3(engine["forceDirection"])) {
-				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'forceDirection' field is not a vec3");
+			if (!engine.contains("direction")) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": Does not contain 'direction' field");
+				errorHit();
+			}
+			else if (!isVec3(engine["direction"])) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'direction' field is not a vec3");
+				errorHit();
+			}
+			else if (glm::length2(getVec3(engine["direction"])) == 0) {
+				Console::log(Console::Log::Type::error, "Engine " + std::to_string(index) + ": 'direction' vector must have length > 0");
 				errorHit();
 			}
 			index++;

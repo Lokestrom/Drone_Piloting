@@ -141,12 +141,12 @@ static void solveSystem(
 	for (int i = 0; i < ENGINE_COUNT; ++i) {
 		const DroneEngine& engine = g_drone.engines[i];
 
-		A(0, i) = engine.forceDirection.x;
-		A(1, i) = engine.forceDirection.y;
-		A(2, i) = engine.forceDirection.z;
+		A(0, i) = engine.direction.x;
+		A(1, i) = engine.direction.y;
+		A(2, i) = engine.direction.z;
 
 		glm::vec3 torqueAxis =
-			glm::cross(engine.position, engine.forceDirection);
+			glm::cross(engine.position, engine.direction);
 
 		A(3, i) = torqueAxis.x;
 		A(4, i) = torqueAxis.y;

@@ -9,7 +9,7 @@
 struct DroneEngine {
 	size_t id;
 	glm::vec3 position;
-	glm::vec3 forceDirection;
+	glm::vec3 direction;
 	float maxThrust;
 };
 
@@ -48,7 +48,7 @@ public:
 	public:
 		HandleAxis1(std::string_view name)
 			: Handle(name) {}
-		float getValue() const;
+		float getValue() const noexcept;
 	};
 
 	// gives values in the range [-1, 1] and can be substituted with two buttons (negative = -1, neutral = 0, positive = 1)
@@ -56,19 +56,19 @@ public:
 	public:
 		HandleAxis2(std::string_view name)
 			: Handle(name) {}
-		float getValue() const;
+		float getValue() const noexcept;
 	};
 	class HandleButton : public Handle {
 	public:
 		HandleButton(std::string_view name)
 			: Handle(name) {}
-		ButtonStateCpp getValue() const;
+		ButtonStateCpp getValue() const noexcept;
 	};
 
 	// the pointer to the handles must remain valid while the program is running
 	UserInputHandler(const std::vector<Handle*>& handles);
 	// should be called on startup to check if the program has handles for all the inputs
-	void startUp(const UserInput& input);
+	void startUp(const UserInput& input) noexcept;
 
 private:
 	const std::vector<Handle*> handles;

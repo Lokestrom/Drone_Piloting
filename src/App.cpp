@@ -287,8 +287,10 @@ void App::render() {
 
 void App::createSettings() {
 	settings.newCategory("Key Bindings");
+	settings.newCategory("Safety");
 	vulkan::createRenderingSettings();
 	createConsoleSettings();
+	createWindowsSettings();
 
 	auto& playerSettings = settings.newCategory("Player");
 	playerSettings.emplace<settings::Value<bool>>("Swap to player on creation",
