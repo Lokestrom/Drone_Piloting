@@ -56,6 +56,11 @@ int main() {
 		Console::createConsoleLogDumpFile("Application crash");
 		std::_Exit(EXIT_FAILURE);
 	}
+	catch (...) {
+		Console::log(Console::Log::Type::error, std::string("Unhandled exception, caused fatal crash. Exception not derived from std::exception."));
+		Console::createConsoleLogDumpFile("Application crash");
+		std::_Exit(EXIT_FAILURE);
+	}
 }
 
 #ifdef WIN32
