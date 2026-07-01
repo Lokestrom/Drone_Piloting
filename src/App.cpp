@@ -33,15 +33,15 @@ void App::startup() {
 	if (!glfwVulkanSupported())
 		throw std::runtime_error("No vulkan support");
 
-	ImVector<const char*> extensions;
-	uint32_t extensions_count = 0;
-	const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
-	for (uint32_t i = 0; i < extensions_count; i++)
-		extensions.push_back(glfw_extensions[i]);
+	std::vector<const char*> extensions;
+	uint32_t glfwExtensionsCount = 0;
+	const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
+	for (uint32_t i = 0; i < glfwExtensionsCount; i++)
+		extensions.push_back(glfwExtensions[i]);
 	vulkan::App::startup(extensions);
 
 	VkSurfaceKHR surface;
-	VkResult err = glfwCreateWindowSurface(vulkan::App::instance, window, nullptr, &surface);
+	VkResult err = glfwCreateWindowSurface(static_cast<VkInstance>(*vulkan::App::instance), window, nullptr, &surface);
 	check_vk_result(err);
 
 	glfwGetFramebufferSize(window, &width, &height);
@@ -70,13 +70,13 @@ void App::startup() {
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = vulkan::App::instance;
-	init_info.PhysicalDevice = vulkan::App::physicalDevice;
-	init_info.Device = vulkan::App::device;
+	init_info.Instance = static_cast<VkInstance>(*vulkan::App::instance);
+	init_info.PhysicalDevice = static_cast<VkPhysicalDevice>(*vulkan::App::physicalDevice);
+	init_info.Device = static_cast<VkDevice>(*vulkan::App::device);
 	init_info.QueueFamily = vulkan::App::queueFamily;
-	init_info.Queue = vulkan::App::queue;
-	init_info.PipelineCache = (VkPipelineCache)vulkan::App::pipelineCache;
-	init_info.DescriptorPool = (VkDescriptorPool)vulkan::App::descriptorPool;
+	init_info.Queue = static_cast<VkQueue>(*vulkan::App::queue);
+	init_info.PipelineCache = static_cast<VkPipelineCache>(*vulkan::App::pipelineCache);
+	init_info.DescriptorPool = static_cast<VkDescriptorPool>(*vulkan::App::descriptorPool);
 	init_info.RenderPass = wd->RenderPass;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = vulkan::App::minImageCount;
@@ -223,8 +223,16 @@ void App::loop() {
 		glfwGetFramebufferSize(window, &width, &height);
 		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) {
 			ImGui_ImplVulkan_SetMinImageCount(vulkan::App::minImageCount);
-			ImGui_ImplVulkanH_CreateOrResizeWindow(vulkan::App::instance, vulkan::App::physicalDevice, vulkan::App::device,
-				&vulkan::App::mainWindowData, vulkan::App::queueFamily, nullptr, width, height, vulkan::App::minImageCount);
+			ImGui_ImplVulkanH_CreateOrResizeWindow(
+				static_cast<VkInstance>(*vulkan::App::instance),
+				static_cast<VkPhysicalDevice>(*vulkan::App::physicalDevice),
+				static_cast<VkDevice>(*vulkan::App::device),
+				&vulkan::App::mainWindowData,
+				vulkan::App::queueFamily,
+				nullptr,
+				width,
+				height,
+				vulkan::App::minImageCount);
 			vulkan::App::rebuild();
 			vulkan::App::mainWindowData.FrameIndex = 0;
 			vulkan::App::swapChainRebuild = false;

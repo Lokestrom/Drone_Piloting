@@ -30,7 +30,7 @@ struct PoolState {
 		, sceneryIDs(other.sceneryIDs) {}
 };
 struct ThreadState {
-	vk::CommandPool commandPool;
+	vk::raii::CommandPool commandPool = nullptr;
 };
 
 ThreadState startUpFunction(PoolState& poolState) {
@@ -46,18 +46,13 @@ ThreadState startUpFunction(PoolState& poolState) {
 	return threadState;
 };
 
-void cleanUpFunction(PoolState& poolState, ThreadState& threadState) {
-	(void)poolState;
-	vulkan::App::device.destroyCommandPool(threadState.commandPool);
-};
-
 bool updateFunction(PoolState& poolState, ThreadState& threadState) {
 	size_t i = poolState.index.fetch_add(1);
 	if (i >= poolState.jsonData["objects"].size())
 		return false;
 	auto& obj = poolState.jsonData["objects"][i];
 	poolState.sceneryIDs[i] = vulkan::GameObjectContainer::Add(vulkan::GameObject{
-		vulkan::ModelCache::loadModel(poolState.folderPath / obj["model"], threadState.commandPool),
+		vulkan::ModelCache::loadModel(poolState.folderPath / obj["model"], *threadState.commandPool),
 		getVec3(obj["position"]),
 		glm::quat(), glm::vec3(1.0),
 		obj.contains("modelPosition") ? getVec3(obj["modelPosition"]) : glm::vec3(),
@@ -99,7 +94,7 @@ bool Map::load(std::filesystem::path folderPath) {
 
 	TreadWorkPool<PoolState, ThreadState> threadPool(8, 
 		PoolState{ jsonData, folderPath, 0, sceneryIDs }, 
-		updateFunction, startUpFunction, cleanUpFunction);
+		updateFunction, startUpFunction);
 
 	threadPool.start();
 	threadPool.waitForWork();

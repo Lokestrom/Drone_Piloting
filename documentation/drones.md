@@ -22,7 +22,8 @@ file explorer and find any folder on disk.
 To create multiple drones press the player menu and create a new player then load a drone,
 here you can also just not load a drone an use it as a camera. When swiping players the 
 normal behavior is that only the selected players inputs are used in drones. But this behavior
-is up to the drone implementation.
+is up to the drone implementation and when loading 2 of the same drone they will share 
+the same static data, this will later be fixed.
 
 ## Custom drones
 This is where the real fun starts, you can create your own drones by following these instructions. <br>
