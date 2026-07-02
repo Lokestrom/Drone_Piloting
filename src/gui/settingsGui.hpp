@@ -10,6 +10,8 @@ void checkbox(const std::string& name, bool& value);
 
 void input(const std::string& name, double& value);
 
+void slider(const std::string& name, int& value, const int& min, const int& max);
+
 void slider(const std::string& name, float& value, const float& min, const float& max);
 
 void slider(const std::string& name, double& value, const double& min, const double& max);

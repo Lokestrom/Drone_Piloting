@@ -39,4 +39,6 @@ private:
 	std::string _name;
 	std::optional<Drone> _drone;
 	vulkan::Camera _camera;
+	settings::ValueHandle<ImGuiKey> _freeCamera;
+	settings::ValueHandle<ImGuiKey> _orbitCamera;
 };

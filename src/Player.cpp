@@ -1,11 +1,21 @@
 #include "Player.hpp"
 
+#include "App.hpp"
 #include "console.hpp"
+#include "SettingNames.hpp"
 
 Player::Player(const std::string& name) noexcept
 	: _name(name)
+	, _drone()
 	, _camera()
-	, _drone() {
+	, _freeCamera(App::settings.get(settingNames::categories::keyBindings)
+		.getSubCategory(settingNames::categories::camera)
+		.get<ImGuiKey>(settingNames::cameraKeys::freeCamera)
+		.getHandle())
+	, _orbitCamera(App::settings.get(settingNames::categories::keyBindings)
+		.getSubCategory(settingNames::categories::camera)
+		.get<ImGuiKey>(settingNames::cameraKeys::orbitCamera)
+		.getHandle()) {
 	_camera.setState(vulkan::Camera::State::FreeCAM);
 	_camera.getPositionRef() = glm::vec3(0, 2, -5);
 	_camera.updateViewMatrix();
@@ -77,9 +87,9 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 
 void Player::update(bool active, bool updateCamera) {
 	using vulkan::Camera;
-	if (ImGui::IsKeyPressed(ImGuiKey_F))
+	if (ImGui::IsKeyPressed(_freeCamera.get()))
 		_camera.setState(Camera::State::FreeCAM);
-	if (ImGui::IsKeyPressed(ImGuiKey_T))
+	if (ImGui::IsKeyPressed(_orbitCamera.get()))
 		_camera.setState(Camera::State::Orbit);
 
 	if (updateCamera)

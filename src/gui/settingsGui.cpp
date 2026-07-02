@@ -1,35 +1,74 @@
 #include "settingsGui.hpp"
 
 #include "../../external/ImGui/imgui.h"
-#include <iostream>
+
+#include <algorithm>
+
+namespace {
+
+constexpr float inputWidth = 200.0f;
+
+void renderSettingName(const std::string& name) {
+	ImGui::AlignTextToFramePadding();
+	ImGui::TextUnformatted(name.c_str());
+	ImGui::SameLine();
+}
+
+float alignInputToRight(float desiredWidth) {
+	const float availableWidth = std::max(ImGui::GetContentRegionAvail().x, 1.0f);
+	const float width = std::min(desiredWidth, availableWidth);
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availableWidth - width);
+	return width;
+}
+
+std::string inputID(const std::string& name) {
+	return "##" + name;
+}
+
+}
 
 namespace gui {
 
 void checkbox(const std::string& name, bool& value) {
-	ImGui::Checkbox(name.c_str(), &value);
+	renderSettingName(name);
+	alignInputToRight(ImGui::GetFrameHeight());
+	ImGui::Checkbox(inputID(name).c_str(), &value);
 }
 
 void input(const std::string& name, double& value) {
-	ImGui::InputDouble(name.c_str(), &value);
+	renderSettingName(name);
+	ImGui::SetNextItemWidth(alignInputToRight(inputWidth));
+	ImGui::InputDouble(inputID(name).c_str(), &value);
+}
+
+void slider(const std::string& name, int& value, const int& min, const int& max) {
+	renderSettingName(name);
+	ImGui::SetNextItemWidth(alignInputToRight(inputWidth));
+	ImGui::SliderInt(inputID(name).c_str(), &value, min, max);
 }
 
 void slider(const std::string& name, float& value, const float& min, const float& max) {
-	ImGui::SliderFloat(name.c_str(), &value, min, max);
+	renderSettingName(name);
+	ImGui::SetNextItemWidth(alignInputToRight(inputWidth));
+	ImGui::SliderFloat(inputID(name).c_str(), &value, min, max);
 }
 void slider(const std::string& name, double& value, const double& min, const double& max) {
-	ImGui::SliderDouble(name.c_str(), &value, min, max);
+	renderSettingName(name);
+	ImGui::SetNextItemWidth(alignInputToRight(inputWidth));
+	ImGui::SliderDouble(inputID(name).c_str(), &value, min, max);
 }
 
 void color(const std::string& name, glm::vec3& color) {
-	ImGui::ColorEdit3(name.c_str(), &color.x, ImGuiColorEditFlags_NoInputs);
+	renderSettingName(name);
+	ImGui::SetNextItemWidth(alignInputToRight(ImGui::GetFrameHeight()));
+	ImGui::ColorEdit3(inputID(name).c_str(), &color.x, ImGuiColorEditFlags_NoInputs);
 }
 
 void keyBindButton(const std::string& name, ImGuiKey& key) {
 	static ImGuiKey* waitingForKey = nullptr;
 	bool isWaiting = waitingForKey == &key;
 
-	ImGui::TextUnformatted(name.c_str());
-	ImGui::SameLine();
+	renderSettingName(name);
 
 	std::string buttonText = ImGui::GetKeyName(key);
 	if (isWaiting) {
@@ -39,9 +78,7 @@ void keyBindButton(const std::string& name, ImGuiKey& key) {
 	ImVec2 buttonSize = ImGui::CalcTextSize(buttonText.c_str());
 	buttonSize.x += ImGui::GetStyle().FramePadding.x * 10.0f;
 
-	float availWidth = ImGui::GetContentRegionAvail().x;
-
-	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + availWidth - buttonSize.x);
+	alignInputToRight(buttonSize.x);
 
 	if (ImGui::Button(buttonText.c_str())) {
 		if (isWaiting) {

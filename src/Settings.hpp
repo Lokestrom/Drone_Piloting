@@ -13,9 +13,10 @@
 namespace settings {
 
 struct IValue {
-	virtual ~IValue() = default;
+	virtual ~IValue() noexcept = default;
 	virtual void set() = 0;
 	virtual const std::string& name() const noexcept = 0;
+	virtual const std::string& hint() const noexcept = 0;
 };
 
 namespace {
@@ -53,7 +54,7 @@ class ValueHandle;
 
 template <typename T>
 	requires !std::is_pointer_v<std::remove_reference_t<T>> &&
-			!std::is_const_v<std::remove_reference_t<T>> 
+			!std::is_const_v<std::remove_reference_t<T>>
 class Value : public IValue 
 {
 	friend class ValueHandle<T>;
@@ -64,23 +65,25 @@ public:
 	using setFunctionT = void (*)(const std::string&, T&);
 
 	Value() = delete;
-	Value(const std::string& name, const T& defaultValue, setFunctionT setFunction)
+	Value(const std::string& name, const T& defaultValue, setFunctionT setFunction, const std::string& hint = "")
 		: _name(name)
+		, _hint(hint)
 		, _value(defaultValue)
 		, _defaultValue(defaultValue)
 		, _setFunction(setFunction)
 		, _refCount(0) {}
 
-	Value(const std::string& name, T value, const nonRefrenceT& defaultValue, setFunctionT setFunction)
+	Value(const std::string& name, T value, const nonRefrenceT& defaultValue, setFunctionT setFunction, const std::string& hint = "")
 		requires std::is_reference_v<T>
 		: _name(name)
+	, _hint(hint)
 	, _value(value)
 	, _defaultValue(defaultValue)
 	, _setFunction(setFunction)
 	, _refCount(0) 
 	{}
 
-	virtual ~Value() {
+	virtual ~Value() noexcept {
 		assert(_refCount == 0 && "There is still references to this value");
 	};
 
@@ -121,17 +124,19 @@ public:
 
 	operator nonRefrenceT&() noexcept { return _value; }
 
-	const std::string& name() const noexcept { return _name; }
+	const std::string& name() const noexcept final { return _name; }
+	const std::string& hint() const noexcept final { return _hint; }
 	void reset() noexcept(assignNoexcept<nonRefrenceT>) { _value = _defaultValue; }
 	ValueHandle<T> getHandle() noexcept {
 		return ValueHandle<T>(*this);
 	};
 
-	virtual void set() { static_cast<setFunctionT>(_setFunction)(_name, _value); }
+	virtual void set() override { static_cast<setFunctionT>(_setFunction)(_name, _value); }
 
 protected:
-	Value(const std::string& name, const T& defaultValue, void* setFunction)
+	Value(const std::string& name, const T& defaultValue, void* setFunction, const std::string& hint)
 		: _name(name)
+		, _hint(hint)
 		, _value(defaultValue)
 		, _defaultValue(defaultValue)
 		, _setFunction(setFunction)
@@ -143,6 +148,7 @@ protected:
 private:
 	size_t _refCount;
 	const std::string _name;
+	const std::string _hint;
 	const std::remove_reference_t<T> _defaultValue;
 };
 
@@ -194,8 +200,9 @@ public:
 	using setFunctionT = void (*)(const std::string&, T&, const T&, const T&);
 
 	ValueWithRange() = delete;
-	ValueWithRange(const std::string& name, const T& defaultValue, setFunctionT setFunction, const T& min, const T& max)
-		: Value<T>(name, defaultValue, setFunction)
+	ValueWithRange(const std::string& name, const T& defaultValue, setFunctionT setFunction, const T& min, const T& max,
+		const std::string& hint = "")
+		: Value<T>(name, defaultValue, setFunction, hint)
 		, _min(min)
 		, _max(max) {
 		assert(min < max && "Minimum value must be less than the maximum!");

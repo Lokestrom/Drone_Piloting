@@ -5,6 +5,7 @@
 #include "rendering/helpers.hpp"
 #include "benchmark.hpp"
 #include "gui/settingsGui.hpp"
+#include "SettingNames.hpp"
 
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -98,7 +99,6 @@ void App::startup() {
 	bool mapLoaded = map.load(ASSET_DIR "maps/TestMap");
 	(void)mapLoaded; // TODO: handle map loading failure
 	assert(mapLoaded && "Failed to load map");
-	vectorScale = glm::vec2(0.3, 0.1);
 	gui::App::startup();
 	setupWindows();
 
@@ -182,6 +182,23 @@ void App::run() {
 }
 
 void App::loop() {
+	static auto toggleOverlay = settings.get(settingNames::categories::keyBindings)
+		.getSubCategory(settingNames::interfaceKeys::subCategory)
+		.get<ImGuiKey>(settingNames::interfaceKeys::toggleOverlay)
+		.getHandle();
+	static auto toggleMenu = settings.get(settingNames::categories::keyBindings)
+		.getSubCategory(settingNames::interfaceKeys::subCategory)
+		.get<ImGuiKey>(settingNames::interfaceKeys::toggleMenu)
+		.getHandle();
+	static auto maximumDeltaTime = settings.get(settingNames::categories::simulation)
+		.get<double>(settingNames::simulation::maximumDeltaTime)
+		.getHandle();
+	static auto repeatedErrorLimit = settings.get(settingNames::categories::safety)
+		.get<int>(settingNames::safety::repeatedLoopErrorLimit)
+		.getHandle();
+
+	static size_t repeatedErrorCount = 0;
+
 	try {
 		glfwPollEvents();
 		renderVectors.clear();
@@ -189,7 +206,7 @@ void App::loop() {
 
 		// TODO: in overlay holding right click should lock cursor pos and rotate cam.
 		// TODO: this should be the gui::App's responsibility
-		if (ImGui::IsKeyPressed(ImGuiKey_Tab, false)) {
+		if (ImGui::IsKeyPressed(toggleOverlay.get(), false)) {
 			if (!gui::App::enabled)
 				gui::App::enabled = true;
 			else if (!gui::App::inMenu)
@@ -203,7 +220,7 @@ void App::loop() {
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 			}
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+		if (ImGui::IsKeyPressed(toggleMenu.get(), false)) {
 			if (!gui::App::enabled)
 				gui::App::enabled = true;
 			else if (gui::App::inMenu)
@@ -249,7 +266,7 @@ void App::loop() {
 			updateCamera = false;
 		}
 
-		if (dt < 0.5) {
+		if (dt < maximumDeltaTime.get()) {
 			if (!gui::App::enabled || !gui::App::inMenu)
 				for (auto& player : players)
 					player->update(player.get() == &getCurrentPlayer(), updateCamera);
@@ -263,9 +280,13 @@ void App::loop() {
 		render();
 
 		InputEventHandler::reset();
+		repeatedErrorCount = 0;
 	}
 	catch (std::exception& e) {
-		Console::log(Console::Log::Type::error, std::string("Unhandled exception in loop") + e.what() + "\nIf this error does not stop restart application");
+		Console::log(Console::Log::Type::error, std::string("Unhandled exception in loop") + e.what());
+		if (repeatedErrorCount++ > static_cast<size_t>(repeatedErrorLimit.get())) {
+			throw std::runtime_error("Too many repeated unhandled exceptions in loop");
+		}
 	}
 }
 
@@ -294,15 +315,37 @@ void App::render() {
 }
 
 void App::createSettings() {
-	settings.newCategory("Key Bindings");
-	settings.newCategory("Safety");
+	auto& keyBindings = settings.newCategory(settingNames::categories::keyBindings);
+	auto& interfaceKeyBindings = keyBindings.addSubCategory(settingNames::interfaceKeys::subCategory);
+	using KeyValue = settings::Value<ImGuiKey>;
+	interfaceKeyBindings.emplace<KeyValue>(settingNames::interfaceKeys::toggleOverlay,
+		ImGuiKey_Tab, KeyValue::setFunctionT(gui::keyBindButton));
+	interfaceKeyBindings.emplace<KeyValue>(settingNames::interfaceKeys::toggleMenu,
+		ImGuiKey_Escape, KeyValue::setFunctionT(gui::keyBindButton));
+
+	auto& safetySettings = settings.newCategory(settingNames::categories::safety);
+	safetySettings.emplace<settings::ValueWithRange<int>>(settingNames::safety::repeatedLoopErrorLimit, 10,
+		settings::ValueWithRange<int>::setFunctionT(gui::slider), 0, 100,
+		"Controls how many consecutive unhandled loop errors are tolerated before the application stops.");
+
+	auto& simulationSettings = settings.newCategory(settingNames::categories::simulation);
+	simulationSettings.emplace<settings::ValueWithRange<double>>(settingNames::simulation::maximumDeltaTime, 0.5,
+		settings::ValueWithRange<double>::setFunctionT(gui::slider), 0.01, 2.0,
+		"Physics updates are skipped when the frame delta time exceeds this value in seconds.");
+
+	auto& performanceSettings = settings.newCategory(settingNames::categories::performance);
+	performanceSettings.emplace<settings::ValueWithRange<int>>(settingNames::performance::mapLoadingThreads, 8,
+		settings::ValueWithRange<int>::setFunctionT(gui::slider), 1, 32,
+		"Number of worker threads used the next time a map is loaded.");
+
 	vulkan::createRenderingSettings();
 	createConsoleSettings();
 	createWindowsSettings();
 
-	auto& playerSettings = settings.newCategory("Player");
-	playerSettings.emplace<settings::Value<bool>>("Swap to player on creation",
-		true, settings::Value<bool>::setFunctionT(gui::checkbox));
+	auto& playerSettings = settings.newCategory(settingNames::categories::player);
+	playerSettings.emplace<settings::Value<bool>>(settingNames::player::swapOnCreation,
+		true, settings::Value<bool>::setFunctionT(gui::checkbox),
+		"Automatically selects a player immediately after it is created.");
 }
 
 
@@ -319,7 +362,8 @@ void App::swapToPlayer(const std::string& name) noexcept {
 
 void App::addPlayer(const std::string& name) {
 	players.push_back(std::make_unique<Player>(name));
-	if (settings.get("Player").get<bool>("Swap to player on creation").getHandle().get())
+	if (settings.get(settingNames::categories::player)
+			.get<bool>(settingNames::player::swapOnCreation))
 		currentPlayer = players.size() - 1;
 }
 

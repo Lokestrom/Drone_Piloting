@@ -4,6 +4,7 @@
 #include "../structures/fileExplorer.hpp"
 #include "../console.hpp"
 #include "../gui/settingsGui.hpp"
+#include "../SettingNames.hpp"
 
 #include <fstream>
 #include <json.hpp>
@@ -19,15 +20,16 @@ DroneSelectWindow::DroneSelectWindow() noexcept
 	: gui::ImGuiWindow("Drone select", true)
 	, folder(ASSET_DIR "Drones/")
 	, hideDroneSafetyWarning(
-		  App::settings.get("Safety")
+		  App::settings.get(settingNames::categories::safety)
 			.get<bool>(hideDroneSafetyWarningSetting)
 			.getHandle()) {
 }
 
 void DroneSelectWindow::createSettings() {
-	auto& safetySettings = App::settings.get("Safety");
+	auto& safetySettings = App::settings.get(settingNames::categories::safety);
 	safetySettings.emplace<settings::Value<bool>>(hideDroneSafetyWarningSetting,
-		false, settings::Value<bool>::setFunctionT(gui::checkbox));
+		false, settings::Value<bool>::setFunctionT(gui::checkbox),
+		"Suppresses the warning shown before selecting code from a drone folder.");
 }
 
 void DroneSelectWindow::_render() {

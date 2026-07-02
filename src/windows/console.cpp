@@ -3,23 +3,27 @@
 #include "../console.hpp"
 #include "../gui/settingsGui.hpp"
 #include "../App.hpp"
+#include "../SettingNames.hpp"
 
 void createConsoleSettings() {
-	auto& settings = App::settings.newCategory("Console");
+	auto& settings = App::settings.newCategory(settingNames::categories::console);
 
-	settings.emplace<settings::Value<glm::vec3>>("Message color", 
+	settings.emplace<settings::Value<glm::vec3>>(settingNames::console::messageColor,
 		glm::vec3{ 1, 1, 1 }, settings::Value<glm::vec3>::setFunctionT(gui::color));
-	settings.emplace<settings::Value<glm::vec3>>("Warning color",
+	settings.emplace<settings::Value<glm::vec3>>(settingNames::console::warningColor,
 		glm::vec3{ 1, 1, 0.2 }, settings::Value<glm::vec3>::setFunctionT(gui::color));
-	settings.emplace<settings::Value<glm::vec3>>("Error color",
+	settings.emplace<settings::Value<glm::vec3>>(settingNames::console::errorColor,
 		glm::vec3{ 1, 0.1, 0.1 }, settings::Value<glm::vec3>::setFunctionT(gui::color));
 }
 
 ConsoleWindow::ConsoleWindow() noexcept
 	: gui::ImGuiWindow("Console", true) 
-	, _messageColor(App::settings.get("Console").get<glm::vec3>("Message color").getHandle()) 
-	, _warningColor(App::settings.get("Console").get<glm::vec3>("Warning color").getHandle())
-	, _errorColor(App::settings.get("Console").get<glm::vec3>("Error color").getHandle())
+	, _messageColor(App::settings.get(settingNames::categories::console)
+		.get<glm::vec3>(settingNames::console::messageColor).getHandle())
+	, _warningColor(App::settings.get(settingNames::categories::console)
+		.get<glm::vec3>(settingNames::console::warningColor).getHandle())
+	, _errorColor(App::settings.get(settingNames::categories::console)
+		.get<glm::vec3>(settingNames::console::errorColor).getHandle())
 	, _showOld(false)
 { }
 

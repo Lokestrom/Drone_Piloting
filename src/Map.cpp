@@ -4,6 +4,8 @@
 #include <fstream>
 #include <thread>
 
+#include "App.hpp"
+#include "SettingNames.hpp"
 #include "structures/treadWorkPool.hpp"
 
 #include "console.hpp"
@@ -92,7 +94,11 @@ bool Map::load(std::filesystem::path folderPath) {
 
 	lightSourcePos = glm::vec3(jsonData["lightSource"][0], jsonData["lightSource"][1], jsonData["lightSource"][2]);
 
-	TreadWorkPool<PoolState, ThreadState> threadPool(8, 
+	auto& mapLoadingThreadSetting = ::App::settings.get(settingNames::categories::performance)
+		.get<int>(settingNames::performance::mapLoadingThreads);
+	const int mapLoadingThreads = static_cast<int&>(mapLoadingThreadSetting);
+
+	TreadWorkPool<PoolState, ThreadState> threadPool(mapLoadingThreads,
 		PoolState{ jsonData, folderPath, 0, sceneryIDs }, 
 		updateFunction, startUpFunction);
 

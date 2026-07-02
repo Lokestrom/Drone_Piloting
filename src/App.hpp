@@ -74,7 +74,6 @@ public:
 	static inline settings::Settings settings;
 	static inline std::vector<RenderVector> renderVectors;
 	static inline std::vector<RenderPoint> renderPoints;
-	static inline glm::vec2 vectorScale;
 
 private:
 	static inline void loop();

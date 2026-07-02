@@ -381,7 +381,7 @@ void Drone::update(bool active) {
 		::App::renderPoints.push_back({ targetPos, glm::vec4(1, 1, 0, 1) });
 	}
 
-	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0, -9.81, 0.0));
+	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0f, -9.81f, 0.0f) * _mass);
 	glm::vec3 torque = glm::vec3(0.0, 0.0, 0.0);
 
 	for (int i = 0; i < commands.count && commands.commands; ++i) {
@@ -485,11 +485,13 @@ void Drone::populateInput() noexcept {
 	for (size_t i = 0; i < values.size(); i++) {
 		switch (_inputType[i]) {
 		case API::InputType::Button: {
-			const auto& key = static_cast<settings::Value<ImGuiKey>*>(values[i].get())->getHandle().get();
+			const ImGuiKey key = static_cast<ImGuiKey&>(
+				*static_cast<settings::Value<ImGuiKey>*>(values[i].get()));
 			_inputButtonStates.push_back(getKeyButtonState(key));
 		} break;
 		case API::InputType::Axis1Way: {
-			const auto& key = static_cast<settings::Value<ImGuiKey>*>(values[i].get())->getHandle().get();
+			const ImGuiKey key = static_cast<ImGuiKey&>(
+				*static_cast<settings::Value<ImGuiKey>*>(values[i].get()));
 			if (isAnalogKey(key)) {
 				_inputAxisStates.push_back(ImGui::GetKeyData(key)->AnalogValue);
 			}
@@ -498,7 +500,8 @@ void Drone::populateInput() noexcept {
 			}
 		} break;
 		case API::InputType::Axis2Way: {
-			const auto& keys = static_cast<settings::Value<Axis2InputT>*>(values[i].get())->getHandle().get();
+			const auto& keys = static_cast<Axis2InputT&>(
+				*static_cast<settings::Value<Axis2InputT>*>(values[i].get()));
 			if (isAnalogKey(keys.first)) {
 				_inputAxisStates.push_back(ImGui::GetKeyData(keys.first)->AnalogValue - ImGui::GetKeyData(keys.second)->AnalogValue);
 			}
