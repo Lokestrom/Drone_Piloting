@@ -88,17 +88,28 @@ void App::startup() {
 	ImGui_ImplVulkan_Init(&init_info);
 
 	// TODO: create async loading.
+	// TODO: not crach if default drone or map load fails.
 	addPlayer("Default");
 	auto& player = getCurrentPlayer();
-	try {
-		(void)player.SwapDrone(ASSET_DIR "drones/testDrone");
+
+	std::filesystem::path dronePath = ASSET_DIR "Drones/testDrone";
+	std::filesystem::path mapPath = ASSET_DIR "Maps/TestMap";
+	if constexpr (benchmark::enabled) {
+		const auto& config = benchmark::getConfig();
+		dronePath = config.drone;
+		mapPath = config.map;
 	}
-	catch (std::exception& e) {
-		Console::log(Console::Log::Type::error, std::string("Failed to load default drone with: ") + e.what());
+
+	if (!player.SwapDrone(dronePath)) {
+		throw std::runtime_error("Failed to load drone: " + dronePath.string());
 	}
-	bool mapLoaded = map.load(ASSET_DIR "maps/TestMap");
-	(void)mapLoaded; // TODO: handle map loading failure
-	assert(mapLoaded && "Failed to load map");
+	if constexpr (benchmark::enabled) {
+		const auto& position = benchmark::getConfig().dronePosition;
+		player.getDrone()->getPosition() = glm::vec3(position[0], position[1], position[2]);
+	}
+	if (!map.load(mapPath)) {
+		throw std::runtime_error("Failed to load map: " + mapPath.string());
+	}
 	gui::App::startup();
 	setupWindows();
 
@@ -151,11 +162,12 @@ void App::updateMouseInput() {
 
 void App::run() {
 	if constexpr (benchmark::enabled) {
+		const auto& config = benchmark::getConfig();
 		// Warmup
 		auto start = std::chrono::high_resolution_clock::now();
 
 		while (std::chrono::high_resolution_clock::now() - start <
-			   std::chrono::seconds(benchmark::warmupTimeSeconds)) {
+			   std::chrono::seconds(config.warmupTimeSeconds)) {
 			loop();
 		}
 
@@ -163,16 +175,15 @@ void App::run() {
 		size_t frames = 0;
 		start = std::chrono::high_resolution_clock::now();
 		while (std::chrono::high_resolution_clock::now() - start <
-			   std::chrono::seconds(benchmark::benchmarkTimeSeconds)) {
+			   std::chrono::seconds(config.benchmarkTimeSeconds)) {
 			loop();
 			frames++;
 		}
 		auto end = std::chrono::high_resolution_clock::now();
 
-		benchmark::file << "Average frame time: "
-						<< std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / static_cast<double>(frames)
-						<< " ms\n";
-		benchmark::averageFrameTimeSum += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / static_cast<double>(frames);
+		benchmark::recordAverageFrameTime(
+			std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() /
+			static_cast<double>(frames));
 	}
 	else {
 		while (!glfwWindowShouldClose(window)) {

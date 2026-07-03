@@ -16,6 +16,7 @@ set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 add_compile_definitions(
   SHADER_OUTPUT_DIR="${CMAKE_SOURCE_DIR}/src/rendering/shaders/out/"
   ASSET_DIR="${CMAKE_SOURCE_DIR}/Assets/"
+  BENCHMARK_DIR="${CMAKE_SOURCE_DIR}/benchmarks/"
 )
 
 add_subdirectory(external)

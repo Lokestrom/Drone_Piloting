@@ -5,42 +5,33 @@
 #include "benchmark.hpp"
 #include "console.hpp"
 
+#include <chrono>
+
 int main() {
 	try {
 		if constexpr (benchmark::enabled) {
-			benchmark::createFile("no_instancing_draws");
+			benchmark::initialize();
+			const auto& config = benchmark::getConfig();
 
-			benchmark::file << "Benchmarking with " << benchmark::runs << " runs\n";
-
-			long long totalStartupTime = 0;
-			long long totalShutdownTime = 0;
-
-			for (size_t i = 0; i < benchmark::runs; i++) {
-				benchmark::file << "\n\n\nRun " << i + 1 << "/" << benchmark::runs << "\n";
+			for (size_t i = 0; i < config.runs; i++) {
+				benchmark::beginRun(i);
 
 				auto start = std::chrono::high_resolution_clock::now();
 				App::startup();
 				auto end = std::chrono::high_resolution_clock::now();
-				benchmark::file << "Startup time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
-				totalStartupTime += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+				benchmark::recordStartupTime(
+					std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
 
 				App::run();
 
 				start = std::chrono::high_resolution_clock::now();
 				App::shutdown();
 				end = std::chrono::high_resolution_clock::now();
-				benchmark::file << "Shutdown time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms\n";
-				totalShutdownTime += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+				benchmark::recordShutdownTime(
+					std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
 			}
 
-			benchmark::file << "\n\n\nSummary:\n";
-			benchmark::file << "Total startup time: " << totalStartupTime << " ms\n";
-			benchmark::file << "Average startup time: " << totalStartupTime / static_cast<double>(benchmark::runs) << " ms\n";
-			benchmark::file << "Total shutdown time: " << totalShutdownTime << " ms\n";
-			benchmark::file << "Average shutdown time: " << totalShutdownTime / static_cast<double>(benchmark::runs) << " ms\n";
-
-			benchmark::file << "\nAverage frame time: " << benchmark::averageFrameTimeSum / static_cast<double>(benchmark::runs) << " ms\n";
-			benchmark::closeFile();
+			benchmark::finalize();
 			return 0;
 		}
 		else {

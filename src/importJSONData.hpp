@@ -8,6 +8,10 @@ using Json = nlohmann::json;
 [[nodiscard]]
 bool isNumber(const Json& jsonObj) noexcept;
 [[nodiscard]]
+bool isInteger(const Json& jsonObj) noexcept;
+[[nodiscard]]
+bool isUnsignedInteger(const Json& jsonObj) noexcept;
+[[nodiscard]]
 bool isString(const Json& jsonObj) noexcept;
 [[nodiscard]]
 bool isArray(const Json& jsonObj) noexcept;

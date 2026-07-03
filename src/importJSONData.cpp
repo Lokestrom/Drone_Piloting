@@ -5,6 +5,12 @@
 bool isNumber(const Json& jsonObj) noexcept {
 	return jsonObj.is_number();
 }
+bool isInteger(const Json& jsonObj) noexcept {
+	return jsonObj.is_number_integer();
+}
+bool isUnsignedInteger(const Json& jsonObj) noexcept {
+	return jsonObj.is_number_unsigned();
+}
 bool isString(const Json& jsonObj) noexcept {
 	return jsonObj.is_string();
 }
