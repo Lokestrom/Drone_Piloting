@@ -117,7 +117,7 @@ bool Map::load(std::filesystem::path folderPath) {
 }
 
 void Map::unload() {
-	vulkan::GameObjectContainer::Remove(sceneryIDs);
+	vulkan::GameObjectContainer::remove(sceneryIDs);
 	sceneryIDs.clear();
 }
 

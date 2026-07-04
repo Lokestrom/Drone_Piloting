@@ -9,7 +9,7 @@
 
 namespace benchmark {
 
-inline constexpr bool enabled = true;
+inline constexpr bool enabled = false;
 inline constexpr std::string_view configFileName = "default.json";
 inline constexpr std::string_view runName = "benchmark3";
 

@@ -7,7 +7,7 @@ class SharedLib {
 public:
 	SharedLib() noexcept
 		: handle(nullptr), errorMessage("") {}
-	SharedLib(std::filesystem::path path) noexcept;
+	SharedLib(std::filesystem::path path);
 	
 	SharedLib(const SharedLib&) = delete;
 	SharedLib& operator=(const SharedLib&) = delete;
@@ -44,7 +44,7 @@ public:
 	}
 
 private:
-	void* handle;
+	void* handle = nullptr;
 	// TODO: create a list insted
 	std::string errorMessage;
 };

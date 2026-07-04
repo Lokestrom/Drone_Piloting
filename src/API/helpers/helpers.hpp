@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include <filesystem>
+#include <span>
 #include <vector>
 
 
@@ -65,11 +66,6 @@ public:
 		ButtonStateCpp getValue() const noexcept;
 	};
 
-	// the pointer to the handles must remain valid while the program is running
-	UserInputHandler(const std::vector<Handle*>& handles);
 	// should be called on startup to check if the program has handles for all the inputs
-	void startUp(const UserInput& input) noexcept;
-
-private:
-	const std::vector<Handle*> handles;
+	static void startUp(const UserInput& input, std::span<Handle* const> handles) noexcept;
 };

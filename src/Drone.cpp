@@ -290,14 +290,14 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 	auto& inputSettings = _settings.newCategory("Inputs");
 	_inputType.reserve(jsonData["inputs"].size());
 
-	std::vector<std::string> names;
-	std::vector<const char*> namePtrs;
-	names.reserve(jsonData["inputs"].size());
-	namePtrs.reserve(jsonData["inputs"].size());
+	std::vector<std::string> inputNames;
+	std::vector<const char*> inputNamePtrs;
+	inputNames.reserve(jsonData["inputs"].size());
+	inputNamePtrs.reserve(jsonData["inputs"].size());
 	for (const auto& inputData : jsonData["inputs"]) {
 		std::string name = inputData["name"];
-		names.push_back(name);
-		namePtrs.push_back(names.back().c_str());
+		inputNames.push_back(name);
+		inputNamePtrs.push_back(inputNames.back().c_str());
 		if (inputData["type"].get<std::string>() == buttonTypeName) {
 			inputSettings.emplace<settings::Value<ImGuiKey>>(name,
 				getKeyFromName(inputData["default key"]), settings::Value<ImGuiKey>::setFunctionT(gui::keyBindButton));
@@ -326,11 +326,13 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 	std::vector<ButtonState>(_inputButtonStates).swap(_inputButtonStates);
 	std::vector<float>(_inputAxisStates).swap(_inputAxisStates);
 
-	_input.size = jsonData["inputs"].size();
-	_input.names = namePtrs.data();
-	_input.types = _inputType.data();
-	_input.buttonPressed = reinterpret_cast<API::ButtonState*>(_inputButtonStates.data());
-	_input.axisValues = _inputAxisStates.data();
+	API::UserInput input{
+		.size = jsonData["inputs"].size(),
+		.names = inputNamePtrs.data(),
+		.types = _inputType.data(),
+		.buttonPressed = reinterpret_cast<API::ButtonState*>(_inputButtonStates.data()),
+		.axisValues = _inputAxisStates.data()
+	};
 
 	_plugin = {};
 #ifdef _DEBUG
@@ -346,7 +348,8 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 		_plugin.getTargetPosition = static_cast<API::GetTargetPositionFn>(_plugin.lib.getFunction("getTargetPosition"));
 	}
 	if (_plugin.lib.hasFunction("setup")) {
-		static_cast<API::SetupFn>(_plugin.lib.getFunction("setup"))(folderPath.string().c_str(), &_input);
+		static_cast<API::SetupFn>(_plugin.lib.getFunction("setup"))(
+			folderPath.string().c_str(), &input);
 	}
 	if (_plugin.lib.hasFunction("getSettings")) {
 		_plugin.getSettings = static_cast<API::GetSettingsFn>(_plugin.lib.getFunction("getSettings"));
@@ -357,7 +360,7 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 
 Drone::~Drone() noexcept {
 	if (objectID != 0)
-		vulkan::GameObjectContainer::Remove(objectID);
+		vulkan::GameObjectContainer::remove(objectID);
 }
 
 void Drone::update(bool active) {

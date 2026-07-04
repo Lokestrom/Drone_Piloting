@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <optional>
 
 #include <glm/glm.hpp>
 #include "importJSONData.hpp"
@@ -110,7 +109,6 @@ private:
 	std::unordered_map<uint64_t, Engines> _engines;
 	DronePlugin _plugin;
 
-	API::UserInput _input;
 	std::vector<API::InputType> _inputType;
 	std::vector<ButtonState> _inputButtonStates;
 	std::vector<float> _inputAxisStates;

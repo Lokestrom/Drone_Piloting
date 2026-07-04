@@ -35,12 +35,8 @@ Drone getDrone(const char* dronePath) {
 	return drone;
 }
 
-UserInputHandler::UserInputHandler(const std::vector<Handle*>& handles) 
-	: handles(handles) {
-}
-
 namespace {
-bool isValid(const UserInput& input, const std::vector<UserInputHandler::Handle*>& handles) noexcept {
+bool isValid(const UserInput& input, std::span<UserInputHandler::Handle* const> handles) noexcept {
 	for (size_t i = 0; i < input.size; ++i) {
 		auto checkName = [&input, &i](UserInputHandler::Handle* handle) {
 			return input.names[i] == handle->name;
@@ -64,7 +60,9 @@ bool isValid(const UserInput& input, const std::vector<UserInputHandler::Handle*
 
 }
 
-void UserInputHandler::startUp(const UserInput& input) noexcept {
+void UserInputHandler::startUp(
+	const UserInput& input,
+	std::span<Handle* const> handles) noexcept {
 	assert(isValid(input, handles) && 
 		"There is unaccounted for input, there is some inputs in the config not used by the program or vise versa"
 		"Also check for spelling mistakes"

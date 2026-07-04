@@ -73,6 +73,8 @@ void ConsoleWindow::print(const Console::Log& log) {
 }
 
 void ConsoleWindow::_render() {
+	std::lock_guard guard(Console::getMutex());
+
 	if (_showOld) {
 		for (size_t i = 0; i < _clearIndex; i++) {
 			print(Console::getLogs()[i]);

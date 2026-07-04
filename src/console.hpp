@@ -41,11 +41,17 @@ public:
 	}
 
 	[[nodiscard]]
+	static std::mutex& getMutex() noexcept {
+		return mutex;
+	}
+
+	[[nodiscard]]
 	static const std::vector<Log>& getLogs() noexcept {
 		return _logs;
 	}
 
 	static void createConsoleLogDumpFile(std::string_view why) {
+		std::lock_guard<std::mutex> lock(mutex);
 		const auto now = std::chrono::system_clock::now();
 		const auto now_s = std::chrono::floor<std::chrono::seconds>(now);
 

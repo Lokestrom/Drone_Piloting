@@ -10,6 +10,7 @@
 
 #include <Eigen/Dense>
 
+#include <array>
 #include <cmath>
 #include <optional>
 #include <string>
@@ -108,13 +109,6 @@ static UserInputHandler::HandleAxis1 left{ "Left" };
 static UserInputHandler::HandleButton up{ "Up" };
 static UserInputHandler::HandleButton down{ "Down" };
 }
-static UserInputHandler g_inputHandler({ 
-	&InputHandles::forward,
-	&InputHandles::right,
-	&InputHandles::left,
-	&InputHandles::up,
-	&InputHandles::down
-});
 
 static SettingsBuffer g_settings;
 
@@ -243,7 +237,14 @@ void addSettings(const char* name, float& value) {
 void setup(const char* dronePath, const UserInput* input) {
 	g_drone = getDrone(dronePath);
 
-	g_inputHandler.startUp(*input);
+	const std::array<UserInputHandler::Handle*, 5> inputHandles{
+		&InputHandles::forward,
+		&InputHandles::right,
+		&InputHandles::left,
+		&InputHandles::up,
+		&InputHandles::down
+	};
+	UserInputHandler::startUp(*input, inputHandles);
 
 	g_settings = {
 		.names = g_settingNames.data(),

@@ -8,8 +8,9 @@
 #include <dlfcn.h>
 #endif
 
-SharedLib::SharedLib(std::filesystem::path path) noexcept 
-	: errorMessage("") {
+SharedLib::SharedLib(std::filesystem::path path)
+	: handle(nullptr)
+	, errorMessage("") {
 	assert(path.has_extension() == false && "path should not have an extention since it is handled here");
 #ifdef _WIN32
 	path += ".dll";
@@ -53,9 +54,8 @@ SharedLib::SharedLib(std::filesystem::path path) noexcept
 }
 
 SharedLib::SharedLib(SharedLib&& other) noexcept
-	: handle(other.handle)
+	: handle(std::exchange(other.handle, nullptr))
 	, errorMessage(std::move(other.errorMessage)) {
-	other.handle = nullptr;
 }
 
 SharedLib& SharedLib::operator=(SharedLib&& other) noexcept {
@@ -69,9 +69,8 @@ SharedLib& SharedLib::operator=(SharedLib&& other) noexcept {
 		dlclose(handle);
 #endif
 	}
-	handle = other.handle;
+	handle = std::exchange(other.handle, nullptr);
 	errorMessage = std::move(other.errorMessage);
-	other.handle = nullptr;
 	return *this;
 }
 
