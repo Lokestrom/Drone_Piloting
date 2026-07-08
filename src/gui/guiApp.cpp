@@ -3,10 +3,12 @@
 #include <ranges>
 #include <algorithm>
 #include <assert.h>
+#include <cmath>
 
 #include <ImGui/imgui_impl_vulkan.h>
 #include <ImGui/imgui_impl_glfw.h>
 #include "toolBar.hpp"
+#include "../App.hpp"
 
 namespace gui {
 void App::startup() {
@@ -21,7 +23,7 @@ void App::generateWindows() {
 	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
 
-	if (enabled) {
+	if (enabled && !::App::hasActiveWorker()) {
 		renderToolBar();
 		if (inMenu) {
 			for (auto i = 0uz; i < menuWindows.size(); ++i) {
@@ -45,7 +47,64 @@ void App::generateWindows() {
 		}
 	}
 
+	if (AsyncWorker::hasWork()) [[unlikely]]
+		renderAsyncWorkPopup();
+
 	ImGui::Render();
+}
+
+void App::renderAsyncWorkPopup() {
+	constexpr const char* popup = "Processing...";
+
+	ImGui::OpenPopup(popup);
+
+	ImGui::SetNextWindowSize(ImVec2(500.0f, 0.0f), ImGuiCond_Appearing);
+	if (ImGui::BeginPopupModal(
+			popup, nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
+		const AsyncWorker::Status status = AsyncWorker::status();
+		if (status.exception) {
+			if (renderAsyncWorkErrorGui(status)) {
+				AsyncWorker::dismissError();
+				ImGui::CloseCurrentPopup();
+			}
+		}
+		else {
+			renderAsyncWorkGui(status);
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void App::renderAsyncWorkGui(const AsyncWorker::Status& status) {
+	const float progress =
+		static_cast<float>(std::fmod(status.elapsedSeconds * 0.55, 1.0));
+	ImGui::Text("Processing %s...", status.description.c_str());
+	ImGui::ProgressBar(progress, ImVec2(-1.0f, 0.0f), "");
+	ImGui::Spacing();
+	AsyncWorker::renderGuiSection(status);
+	ImGui::Separator();
+	ImGui::Text("Elapsed: %.1f seconds", status.elapsedSeconds);
+	ImGui::Spacing();
+	ImGui::TextDisabled(
+		"Rendering and physics are paused while background work is running.");
+}
+
+bool App::renderAsyncWorkErrorGui(const AsyncWorker::Status& status) {
+	ImGui::Text("Failed to process %s.", status.description.c_str());
+	const std::string error = AsyncWorker::exceptionMessage(status.exception);
+	if (!error.empty())
+		ImGui::TextWrapped("Reason: %s", error.c_str());
+	ImGui::TextUnformatted("Check the console for additional details.");
+	ImGui::Spacing();
+	AsyncWorker::renderErrorGuiSection(status);
+	ImGui::Separator();
+	if (ImGui::Button("Open console")) {
+		openWindow("Console");
+		return true;
+	}
+	ImGui::SameLine();
+	return ImGui::Button("OK");
 }
 
 void App::shutdown() {

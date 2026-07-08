@@ -7,6 +7,12 @@
 #include "Drone.hpp"
 #include "Map.hpp"
 #include "Player.hpp"
+#include "structures/asyncWorker.hpp"
+
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
 
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
@@ -33,17 +39,19 @@ public:
 	[[nodiscard]]
 	static vulkan::UniformBufferObject getUBO() noexcept { 
 		vulkan::UniformBufferObject ubo = getCurrentPlayer().getUBO();
-		ubo.lightSource = glm::vec4(map.getLightSourcePos(),1.0);
+		ubo.lightSource = map
+			? glm::vec4(map->getLightSourcePos(), 1.0f)
+			: glm::vec4(0.0f);
 		return ubo;
 	}
 
 	[[nodiscard]]
-	static bool swapDrone(std::filesystem::path folderPath) { return getCurrentPlayer().SwapDrone(folderPath); }
+	static bool hasActiveWorker() noexcept { return AsyncWorker::hasWork(); }
+	static void installMap(
+		Map&& replacement,
+		std::filesystem::path loadedPath) noexcept;
 	[[nodiscard]]
-	static bool swapMap(std::filesystem::path folderPath) {
-		map.unload();
-		return map.load(folderPath);
-	}
+	static const std::filesystem::path& getLoadedMapPath() noexcept { return loadedMapPath; }
 
 	// Should create a player container
 	[[nodiscard]]
@@ -80,6 +88,9 @@ private:
 	static void render();
 	//should delegate to something else like the inputhandler
 	static void updateMouseInput();
+	static void startInitialAsyncLoad(
+		std::filesystem::path dronePath,
+		std::filesystem::path mapPath);
 	static void createSettings();
 
 private:
@@ -87,6 +98,7 @@ private:
 	static inline GLFWwindow* window;
 	static inline std::vector<std::unique_ptr<Player>> players;
 	static inline size_t currentPlayer = 0;
-	static inline Map map;
+	static inline std::optional<Map> map;
+	static inline std::filesystem::path loadedMapPath;
 	static inline double dt;
 };

@@ -1,5 +1,6 @@
 #include "Map.hpp"
 
+#include <algorithm>
 #include <json.hpp>
 #include <fstream>
 #include <thread>
@@ -34,6 +35,13 @@ struct PoolState {
 struct ThreadState {
 	vk::raii::CommandPool commandPool = nullptr;
 };
+
+namespace {
+void unloadPartialMap(std::vector<vulkan::ID>& sceneryIDs) noexcept {
+	vulkan::GameObjectContainer::removeWithInvalids(sceneryIDs);
+	sceneryIDs.clear();
+}
+}
 
 ThreadState startUpFunction(PoolState& poolState) {
 	(void)poolState;
@@ -70,7 +78,28 @@ Map::~Map() noexcept {
 	unload();
 }
 
+Map::Map(Map&& other) noexcept
+	: sceneryIDs(std::move(other.sceneryIDs))
+	, lightSourcePos(other.lightSourcePos) {
+	other.sceneryIDs.clear();
+	other.lightSourcePos = glm::vec3(0.0f);
+}
+
+Map& Map::operator=(Map&& other) noexcept {
+	if (this == &other)
+		return *this;
+
+	unload();
+	sceneryIDs = std::move(other.sceneryIDs);
+	lightSourcePos = other.lightSourcePos;
+	other.sceneryIDs.clear();
+	other.lightSourcePos = glm::vec3(0.0f);
+	return *this;
+}
+
 bool Map::load(std::filesystem::path folderPath) {
+	assert(sceneryIDs.empty() && "A map must be unloaded before it can be loaded again");
+
 	if (!verifyMapFolder(folderPath))
 		return false;
 
@@ -90,33 +119,52 @@ bool Map::load(std::filesystem::path folderPath) {
 	if (!verifyConfigFile(jsonData, folderPath))
 		return false;
 
-	sceneryIDs = std::vector<vulkan::ID>(jsonData["objects"].size());
+	std::vector<vulkan::ID> loadedSceneryIDs(jsonData["objects"].size());
 
-	lightSourcePos = glm::vec3(jsonData["lightSource"][0], jsonData["lightSource"][1], jsonData["lightSource"][2]);
-
-	auto& mapLoadingThreadSetting = ::App::settings.get(settingNames::categories::performance)
+	const int mapLoadingThreads = ::App::settings.get(settingNames::categories::performance)
 		.get<int>(settingNames::performance::mapLoadingThreads);
-	const int mapLoadingThreads = static_cast<int&>(mapLoadingThreadSetting);
-
-	TreadWorkPool<PoolState, ThreadState> threadPool(mapLoadingThreads,
-		PoolState{ jsonData, folderPath, 0, sceneryIDs }, 
-		updateFunction, startUpFunction);
-
-	threadPool.start();
-	threadPool.waitForWork();
 
 	try {
+		TreadWorkPool<PoolState, ThreadState> threadPool(
+			mapLoadingThreads,
+			PoolState{ jsonData, folderPath, 0, loadedSceneryIDs },
+			updateFunction,
+			startUpFunction);
+
+		threadPool.start();
+		threadPool.waitForWork();
 		threadPool.getExceptions();
 	}
 	catch (const std::exception& e) {
+		unloadPartialMap(loadedSceneryIDs);
 		Console::log(Console::Log::Type::error, "Failed to load map: " + folderPath.string() + "\n Failed with error: " + e.what());
 		return false;
 	}
+	catch (...) {
+		unloadPartialMap(loadedSceneryIDs);
+		Console::log(
+			Console::Log::Type::error,
+			"Failed to load map due to an unknown worker exception: " +
+				folderPath.string());
+		return false;
+	}
 
+	assert(!std::ranges::any_of(
+		loadedSceneryIDs,
+			   [](vulkan::ID id) noexcept { return id == 0; }) &&
+		   "Cant have invalid id in the loaded scenery"
+	);
+
+	sceneryIDs = std::move(loadedSceneryIDs);
+	lightSourcePos = getVec3(jsonData["lightSource"]);
 	return true;
 }
 
-void Map::unload() {
+void Map::unload() noexcept {
+	assert(std::ranges::none_of(
+		sceneryIDs,
+		[](vulkan::ID id) noexcept { return id == 0; }) &&
+		"A fully loaded map cannot contain invalid object IDs");
 	vulkan::GameObjectContainer::remove(sceneryIDs);
 	sceneryIDs.clear();
 }

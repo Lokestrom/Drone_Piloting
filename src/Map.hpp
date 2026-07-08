@@ -55,13 +55,13 @@ public:
 	Map(Map&) = delete;
 	Map& operator=(Map&) = delete;
 
-	Map(Map&&) noexcept = default;
-	Map& operator=(Map&&) noexcept = default;
+	Map(Map&& other) noexcept;
+	Map& operator=(Map&& other) noexcept;
 	~Map() noexcept;
 
 	[[nodiscard]]
 	bool load(std::filesystem::path folderPath);
-	void unload();
+	void unload() noexcept;
 
 	[[nodiscard]]
 	const glm::vec3& getLightSourcePos() const noexcept { return lightSourcePos; }

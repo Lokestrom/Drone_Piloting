@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_set>
+#include <utility>
 
 #include <json.hpp>
 #include <glm/glm.hpp>
@@ -13,6 +14,7 @@
 #include "App.hpp"
 #include "Settings.hpp"
 #include "gui/settingsGui.hpp"
+#include "rendering/helpers.hpp"
 #include "console.hpp"
 
 using Axis2InputT = std::pair<ImGuiKey, ImGuiKey>;
@@ -217,6 +219,41 @@ std::string_view getLibExtention() noexcept {
 
 }
 
+Drone::Drone(Drone&& other) noexcept
+	: _settings(std::move(other._settings))
+	, objectID(std::exchange(other.objectID, 0))
+	, _invInertia_B(other._invInertia_B)
+	, _velocity(other._velocity)
+	, _angularMomentum(other._angularMomentum)
+	, _mass(other._mass)
+	, _engines(std::move(other._engines))
+	, _plugin(std::move(other._plugin))
+	, _inputType(std::move(other._inputType))
+	, _inputButtonStates(std::move(other._inputButtonStates))
+	, _inputAxisStates(std::move(other._inputAxisStates)) {
+}
+
+Drone& Drone::operator=(Drone&& other) noexcept {
+	if (this == &other)
+		return *this;
+
+	if (objectID != 0)
+		vulkan::GameObjectContainer::remove(objectID);
+
+	objectID = std::exchange(other.objectID, 0);
+	_invInertia_B = other._invInertia_B;
+	_velocity = other._velocity;
+	_angularMomentum = other._angularMomentum;
+	_mass = other._mass;
+	_engines = std::move(other._engines);
+	_plugin = std::move(other._plugin);
+	_inputType = std::move(other._inputType);
+	_inputButtonStates = std::move(other._inputButtonStates);
+	_inputAxisStates = std::move(other._inputAxisStates);
+	_settings = std::move(other._settings);
+	return *this;
+}
+
 bool Drone::load(const std::filesystem::path& folderPath) {
 	return _load(folderPath);
 }
@@ -268,8 +305,12 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 	_velocity = glm::vec3(0.0);
 	_angularMomentum = glm::vec3(0.0);
 
+	auto commandPool = vulkan::createCommandPool(
+		vulkan::App::queueFamily,
+		vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
+			vk::CommandPoolCreateFlagBits::eTransient);
 	objectID = vulkan::GameObjectContainer::Add(vulkan::GameObject{
-		vulkan::ModelCache::loadModel(folderPath / jsonData["model"]),
+		vulkan::ModelCache::loadModel(folderPath / jsonData["model"], *commandPool),
 		glm::vec3(0, 0, 0),
 		glm::quat(1, 0, 0, 0),
 		glm::vec3(1.0),
@@ -390,11 +431,11 @@ void Drone::update(bool active) {
 	for (int i = 0; i < commands.count && commands.commands; ++i) {
 		const auto& command = commands.commands[i];
 
-		if (_engines.find(command.engineId) == _engines.end()) {
+		if (_engines.find(command.engineId) == _engines.end()) [[unlikely]] {
 			Console::log(Console::Log::Type::error, std::string("Invalid engine ID: ") + std::to_string(command.engineId));
 			continue;
 		}
-		if (std::abs(command.thrust) > _engines[command.engineId].maxThrust) {
+		if (std::abs(command.thrust) > _engines[command.engineId].maxThrust) [[unlikely]] {
 			Console::log(Console::Log::Type::warning, 
 				std::string("Thrust value ") + std::to_string(command.thrust) + " exceeds max thrust for engine " + std::to_string(command.engineId));
 			continue;

@@ -2,16 +2,16 @@
 
 #include "../App.hpp"
 #include "../structures/fileExplorer.hpp"
-#include "../console.hpp"
+#include "../gui/asyncWorkerGui.hpp"
+#include "../rendering/VulkanApp.hpp"
 
 #include <fstream>
 #include <json.hpp>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 using Json = nlohmann::json;
-
-namespace {
-constexpr const char* errorPopupName = "Map failed to load";
-}
 
 MapSelectWindow::MapSelectWindow() noexcept
 	: gui::ImGuiWindow("Map select", true)
@@ -41,25 +41,6 @@ void MapSelectWindow::_render() {
 		renderFolder(entry.path());
 	}
 
-	if (ImGui::BeginPopupModal(errorPopupName)) {
-		std::string message =
-			"The map:\n\"" + loadedMap.string() +
-			"\"\nfailed to load.\n\nCheck the console for errors.";
-
-		ImGui::TextUnformatted(message.c_str());
-
-		ImGui::Separator();
-
-		if (ImGui::Button("Open console")) {
-			gui::App::openWindow("Console");
-			ImGui::CloseCurrentPopup();
-		}
-		if (ImGui::Button("OK")) {
-			ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::EndPopup();
-	}
 }
 
 void MapSelectWindow::renderFolder(const std::filesystem::path& mapFolder) {
@@ -88,7 +69,7 @@ void MapSelectWindow::renderFolder(const std::filesystem::path& mapFolder) {
 				jsonData["description"].get_ref<const std::string&>().c_str());
 		}
 
-		if (!failed && loadedMap == mapFolder) {
+		if (App::getLoadedMapPath() == mapFolder) {
 			ImGui::TextUnformatted("Currently selected");
 			return;
 		}
@@ -100,17 +81,33 @@ void MapSelectWindow::renderFolder(const std::filesystem::path& mapFolder) {
 }
 
 void MapSelectWindow::selectFolder(const std::filesystem::path& mapFolder) {
-	loadedMap = mapFolder;
-	failed = false;
-	try {
-		if (!App::swapMap(mapFolder)) {
-			failed = true;
+	auto workerGui = std::make_shared<gui::AsyncWorkerGui>(
+		std::vector<gui::AsyncWorkerGui::Path>{ { "Path", mapFolder } });
+
+	AsyncWorker::submit(AsyncWorker::WorkOrder{
+		.description = "map",
+		.work = [
+			mapFolder,
+			workerGui]() mutable -> AsyncWorker::CompletionFn {
+			vulkan::App::waitIdle();
+			workerGui->setPhase("Loading models and textures");
+
+			Map loadedMap;
+			if (!loadedMap.load(mapFolder))
+				throw std::runtime_error("The selected map folder could not be loaded.");
+
+			workerGui->setPhase("Installing loaded map");
+			return AsyncWorker::CompletionFn{
+				[mapFolder, loadedMap = std::move(loadedMap)]() mutable {
+					App::installMap(std::move(loadedMap), mapFolder);
+				}
+			};
+		},
+		.detailsGui = [workerGui](const AsyncWorker::Status& status) {
+			workerGui->renderDetails(status);
+		},
+		.errorDetailsGui = [workerGui](const AsyncWorker::Status& status) {
+			workerGui->renderErrorDetails(status);
 		}
-	}
-	catch (std::exception& e) {
-		failed = true;
-		Console::log(Console::Log::Type::error, std::string("Hit an exception when trying to load map: ") + e.what());
-	}
-	if (failed)
-		ImGui::OpenPopup(errorPopupName);
+	});
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "window.hpp"
+#include "../structures/asyncWorker.hpp"
 
 #include <vector>
 #include <memory>
@@ -32,6 +33,11 @@ public:
 	static inline bool enabled;
 	static inline bool inMenu;
 private:
+	static void renderAsyncWorkPopup();
+	static void renderAsyncWorkGui(const AsyncWorker::Status& status);
+	[[nodiscard]]
+	static bool renderAsyncWorkErrorGui(const AsyncWorker::Status& status);
+
 	// If we want to allow creating multiple windows 
 	// of the same type, we would need to change this shit
 	

@@ -33,6 +33,7 @@ public:
 		const std::string _what;
 	};
 
+	// TODO: currently this is not noexcept
 	static void log(Log::Type type, const std::string& what) {
 		std::lock_guard<std::mutex> lock(mutex);
 		_logs.emplace_back(Log(type, what));

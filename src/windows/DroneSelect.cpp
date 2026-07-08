@@ -2,12 +2,18 @@
 
 #include "../App.hpp"
 #include "../structures/fileExplorer.hpp"
-#include "../console.hpp"
 #include "../gui/settingsGui.hpp"
+#include "../gui/asyncWorkerGui.hpp"
+#include "../rendering/VulkanApp.hpp"
 #include "../SettingNames.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <json.hpp>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <utility>
 
 using Json = nlohmann::json;
 
@@ -75,25 +81,6 @@ void DroneSelectWindow::_render() {
 		ImGui::EndPopup();
 	}
 
-	if (ImGui::BeginPopupModal("Drone failed to load")) {
-		std::string message =
-			"The drone:\n\"" + lastFailedDrone.string() +
-			"\"\nfailed to load.\n\nCheck the console for errors.";
-
-		ImGui::TextUnformatted(message.c_str());
-
-		ImGui::Separator();
-
-		if (ImGui::Button("Open console")) {
-			gui::App::openWindow("Console");
-			ImGui::CloseCurrentPopup();
-		}
-		if (ImGui::Button("OK")) {
-			ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::EndPopup();
-	}
 }
 
 void DroneSelectWindow::renderFolder(const std::filesystem::path& droneFolder) {
@@ -129,8 +116,53 @@ void DroneSelectWindow::renderFolder(const std::filesystem::path& droneFolder) {
 }
 
 void DroneSelectWindow::selectFolder(const std::filesystem::path& droneFolder) {
-	lastFailedDrone = droneFolder;
-	if (!App::swapDrone(droneFolder)) {
-		ImGui::OpenPopup("Drone failed to load");
-	}
+	const std::string playerName = App::getCurrentPlayer().name();
+	std::optional<API::DroneState> previousState;
+	if (App::getCurrentPlayer().getDrone())
+		previousState = App::getCurrentPlayer().getDrone()->getState();
+
+	auto workerGui = std::make_shared<gui::AsyncWorkerGui>(
+		std::vector<gui::AsyncWorkerGui::Path>{ { "Path", droneFolder } });
+
+	AsyncWorker::submit(AsyncWorker::WorkOrder{
+		.description = "drone",
+		.work = [
+			droneFolder,
+			playerName,
+			previousState,
+			workerGui]() mutable -> AsyncWorker::CompletionFn {
+			vulkan::App::waitIdle();
+			workerGui->setPhase("Loading models, configuration, and code");
+
+			Drone loadedDrone;
+			const bool loaded = previousState
+				? loadedDrone.load(droneFolder, *previousState)
+				: loadedDrone.load(droneFolder);
+			if (!loaded)
+				throw std::runtime_error(
+					"The selected drone folder could not be loaded.");
+
+			workerGui->setPhase("Installing loaded drone");
+			return AsyncWorker::CompletionFn{
+				[
+					playerName,
+					loadedDrone = std::move(loadedDrone)]() mutable {
+					const auto player = std::ranges::find_if(
+						App::getPlayers(),
+						[&](const std::unique_ptr<Player>& candidate) {
+							return candidate->name() == playerName;
+						});
+					assert(player != App::getPlayers().end() && "Player not found, no player may be destroyed during a async operation");
+
+					player->get()->replaceDrone(std::move(loadedDrone));
+				}
+			};
+		},
+		.detailsGui = [workerGui](const AsyncWorker::Status& status) {
+			workerGui->renderDetails(status);
+		},
+		.errorDetailsGui = [workerGui](const AsyncWorker::Status& status) {
+			workerGui->renderErrorDetails(status);
+		},
+	});
 }

@@ -5,7 +5,11 @@
 #include "rendering/helpers.hpp"
 #include "benchmark.hpp"
 #include "gui/settingsGui.hpp"
+#include "gui/asyncWorkerGui.hpp"
 #include "SettingNames.hpp"
+
+#include <memory>
+#include <utility>
 
 #include <vulkan/vk_enum_string_helper.h>
 
@@ -14,7 +18,7 @@ static void glfwErrorCallback(int error, const char* description) {
 }
 
 static void check_vk_result(VkResult err) {
-	if (err == VK_SUCCESS)
+	if (err == VK_SUCCESS) [[likely]]
 		return;
 	__debugbreak();
 	Console::log(Console::Log::Type::error, std::string("Vulkan error: ") + string_VkResult(err));
@@ -87,8 +91,6 @@ void App::startup() {
 	init_info.CheckVkResultFn = check_vk_result;
 	ImGui_ImplVulkan_Init(&init_info);
 
-	// TODO: create async loading.
-	// TODO: not crach if default drone or map load fails.
 	addPlayer("Default");
 	auto& player = getCurrentPlayer();
 
@@ -100,31 +102,43 @@ void App::startup() {
 		mapPath = config.map;
 	}
 
-	if (!player.SwapDrone(dronePath)) {
-		throw std::runtime_error("Failed to load drone: " + dronePath.string());
-	}
 	if constexpr (benchmark::enabled) {
+		Drone loadedDrone;
+		if (!loadedDrone.load(dronePath)) {
+			throw std::runtime_error("Failed to load drone: " + dronePath.string());
+		}
+		player.replaceDrone(std::move(loadedDrone));
 		const auto& position = benchmark::getConfig().dronePosition;
 		player.getDrone()->getPosition() = glm::vec3(position[0], position[1], position[2]);
+		map.emplace();
+		if (!map->load(mapPath)) {
+			map.reset();
+			throw std::runtime_error("Failed to load map: " + mapPath.string());
+		}
+		loadedMapPath = mapPath;
 	}
-	if (!map.load(mapPath)) {
-		throw std::runtime_error("Failed to load map: " + mapPath.string());
-	}
+
 	gui::App::startup();
 	setupWindows();
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
+	if constexpr (!benchmark::enabled) {
+		startInitialAsyncLoad(std::move(dronePath), std::move(mapPath));
+	}
 }
 
 void App::shutdown() {
+
 	try {
-		vulkan::App::device.waitIdle();
+		vulkan::App::waitIdle();
 	}
 	catch (...) {
 		throw std::runtime_error("Failed to wait when shutting down");
 	}
+	AsyncWorker::shutdown();
 
-	map.unload();
+	map.reset();
 	for (auto& player : players)
 		player->releaseDrone();
 
@@ -160,6 +174,68 @@ void App::updateMouseInput() {
 	}
 }
 
+void App::startInitialAsyncLoad(
+	std::filesystem::path dronePath,
+	std::filesystem::path mapPath) {
+	auto workerGui = std::make_shared<gui::AsyncWorkerGui>(
+		std::vector<gui::AsyncWorkerGui::Path>{
+			{ "Drone", dronePath },
+			{ "Map", mapPath } });
+	const std::string playerName = getCurrentPlayer().name();
+
+	AsyncWorker::submit(AsyncWorker::WorkOrder{
+		.description = "initial map and drone",
+		.work = [dronePath = std::move(dronePath),
+					mapPath = std::move(mapPath),
+					playerName,
+					workerGui]() mutable -> AsyncWorker::CompletionFn {
+			vulkan::App::waitIdle();
+
+			workerGui->setPhase("Loading drone");
+			Drone loadedDrone;
+			if (!loadedDrone.load(dronePath))
+				throw std::runtime_error("The default drone failed to load.");
+
+			workerGui->setPhase("Loading map");
+			Map loadedMap;
+			if (!loadedMap.load(mapPath))
+				throw std::runtime_error("The default map failed to load.");
+
+			workerGui->setPhase("Installing loaded assets");
+			return AsyncWorker::CompletionFn{
+				[playerName,
+					mapPath = std::move(mapPath),
+					loadedDrone = std::move(loadedDrone),
+					loadedMap = std::move(loadedMap)]() mutable {
+					const auto player = std::ranges::find_if(
+						players,
+						[&](const std::unique_ptr<Player>& candidate) {
+							return candidate->name() == playerName;
+						});
+					if (player == players.end())
+						throw std::runtime_error(
+							"The player for the initial drone no longer exists.");
+
+					player->get()->replaceDrone(std::move(loadedDrone));
+					installMap(std::move(loadedMap), std::move(mapPath));
+				}
+			};
+		},
+		.detailsGui = [workerGui](const AsyncWorker::Status& status) {
+			workerGui->renderDetails(status);
+		},
+		.errorDetailsGui = [workerGui](const AsyncWorker::Status& status) {
+			workerGui->renderErrorDetails(status);
+		} });
+}
+
+void App::installMap(
+	Map&& replacement,
+	std::filesystem::path loadedPath) noexcept {
+	map.emplace(std::move(replacement));
+	loadedMapPath = std::move(loadedPath);
+}
+
 void App::run() {
 	if constexpr (benchmark::enabled) {
 		const auto& config = benchmark::getConfig();
@@ -167,7 +243,7 @@ void App::run() {
 		auto start = std::chrono::high_resolution_clock::now();
 
 		while (std::chrono::high_resolution_clock::now() - start <
-			   std::chrono::seconds(config.warmupTimeSeconds)) {
+			   std::chrono::seconds(config.warmupTimeSeconds)) [[likely]] {
 			loop();
 		}
 
@@ -175,7 +251,7 @@ void App::run() {
 		size_t frames = 0;
 		start = std::chrono::high_resolution_clock::now();
 		while (std::chrono::high_resolution_clock::now() - start <
-			   std::chrono::seconds(config.benchmarkTimeSeconds)) {
+			   std::chrono::seconds(config.benchmarkTimeSeconds)) [[likely]] {
 			loop();
 			frames++;
 		}
@@ -186,7 +262,7 @@ void App::run() {
 			static_cast<double>(frames));
 	}
 	else {
-		while (!glfwWindowShouldClose(window)) {
+		while (!glfwWindowShouldClose(window)) [[likely]] {
 			loop();
 		}
 	}
@@ -194,19 +270,19 @@ void App::run() {
 
 void App::loop() {
 	static auto toggleOverlay = settings.get(settingNames::categories::keyBindings)
-		.getSubCategory(settingNames::interfaceKeys::subCategory)
-		.get<ImGuiKey>(settingNames::interfaceKeys::toggleOverlay)
-		.getHandle();
+									.getSubCategory(settingNames::interfaceKeys::subCategory)
+									.get<ImGuiKey>(settingNames::interfaceKeys::toggleOverlay)
+									.getHandle();
 	static auto toggleMenu = settings.get(settingNames::categories::keyBindings)
-		.getSubCategory(settingNames::interfaceKeys::subCategory)
-		.get<ImGuiKey>(settingNames::interfaceKeys::toggleMenu)
-		.getHandle();
+								 .getSubCategory(settingNames::interfaceKeys::subCategory)
+								 .get<ImGuiKey>(settingNames::interfaceKeys::toggleMenu)
+								 .getHandle();
 	static auto maximumDeltaTime = settings.get(settingNames::categories::simulation)
-		.get<double>(settingNames::simulation::maximumDeltaTime)
-		.getHandle();
+									   .get<double>(settingNames::simulation::maximumDeltaTime)
+									   .getHandle();
 	static auto repeatedErrorLimit = settings.get(settingNames::categories::safety)
-		.get<int>(settingNames::safety::repeatedLoopErrorLimit)
-		.getHandle();
+										 .get<int>(settingNames::safety::repeatedLoopErrorLimit)
+										 .getHandle();
 
 	static size_t repeatedErrorCount = 0;
 
@@ -217,7 +293,7 @@ void App::loop() {
 
 		// TODO: in overlay holding right click should lock cursor pos and rotate cam.
 		// TODO: this should be the gui::App's responsibility
-		if (ImGui::IsKeyPressed(toggleOverlay.get(), false)) {
+		if (ImGui::IsKeyPressed(toggleOverlay.get(), false)) [[unlikely]] {
 			if (!gui::App::enabled)
 				gui::App::enabled = true;
 			else if (!gui::App::inMenu)
@@ -231,7 +307,7 @@ void App::loop() {
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 			}
 		}
-		if (ImGui::IsKeyPressed(toggleMenu.get(), false)) {
+		if (ImGui::IsKeyPressed(toggleMenu.get(), false)) [[unlikely]] {
 			if (!gui::App::enabled)
 				gui::App::enabled = true;
 			else if (gui::App::inMenu)
@@ -249,43 +325,34 @@ void App::loop() {
 		updateMouseInput();
 
 		glfwGetFramebufferSize(window, &width, &height);
-		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) {
-			ImGui_ImplVulkan_SetMinImageCount(vulkan::App::minImageCount);
-			ImGui_ImplVulkanH_CreateOrResizeWindow(
-				static_cast<VkInstance>(*vulkan::App::instance),
-				static_cast<VkPhysicalDevice>(*vulkan::App::physicalDevice),
-				static_cast<VkDevice>(*vulkan::App::device),
-				&vulkan::App::mainWindowData,
-				vulkan::App::queueFamily,
-				nullptr,
-				width,
-				height,
-				vulkan::App::minImageCount);
-			vulkan::App::rebuild();
-			vulkan::App::mainWindowData.FrameIndex = 0;
-			vulkan::App::swapChainRebuild = false;
+		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) [[unlikely]] {
+			vulkan::App::resizeMainWindow(width, height);
 		}
-		if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
+		if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) [[unlikely]] {
 			ImGui_ImplGlfw_Sleep(10);
 			return;
 		}
 
 		dt = ImGui::GetIO().DeltaTime;
+		AsyncWorker::update();
 
 		bool updateCamera = true;
 		if (gui::App::enabled && !gui::App::inMenu) {
 			updateCamera = false;
 		}
 
-		if (dt < maximumDeltaTime.get()) {
-			if (!gui::App::enabled || !gui::App::inMenu)
-				for (auto& player : players)
-					player->update(player.get() == &getCurrentPlayer(), updateCamera);
-		}
-		else {
-			Console::log(Console::Log::Type::warning, "Skiped physics update, delta time to large. "
-				"This message is normal if it happens once after loading a map, drone or focusing the window. "
-				"If this warning persists the drone or map may be to performance intensive for your computer.");
+		// Hot path is the physics update
+		if (!hasActiveWorker()) [[likely]] {
+			if (dt < maximumDeltaTime.get()) [[likely]] {
+				if (!gui::App::enabled || !gui::App::inMenu) [[likely]]
+					for (auto& player : players)
+						player->update(player.get() == &getCurrentPlayer(), updateCamera);
+			}
+			else [[unlikely]] {
+				Console::log(Console::Log::Type::warning, "Skiped physics update, delta time to large. "
+														  "This message is normal if it happens once after loading a map, drone or focusing the window. "
+														  "If this warning persists the drone or map may be to performance intensive for your computer.");
+			}
 		}
 
 		render();
@@ -306,21 +373,23 @@ void App::render() {
 
 	ImDrawData* main_draw_data = ImGui::GetDrawData();
 	const bool mainMinimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
-	if (!mainMinimized) {
+	if (!mainMinimized) [[likely]] {
 		vulkan::App::beginFrame(wd);
 
-		auto UBO = getUBO();
-		vulkan::App::render(UBO);
+		const bool workerActive = hasActiveWorker();
+		vulkan::UniformBufferObject UBO{};
+		if (!workerActive) [[likely]]
+			UBO = getUBO();
+		vulkan::App::render(UBO, !workerActive);
 		gui::App::render(wd);
 
 		vulkan::App::endMainFrame(wd);
 	}
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-		ImGui::UpdatePlatformWindows();
-		ImGui::RenderPlatformWindowsDefault();
+		vulkan::App::updatePlatformWindows();
 	}
-	if (!mainMinimized) {
+	if (!mainMinimized) [[likely]] {
 		vulkan::App::endFrame(wd);
 	}
 }
@@ -364,10 +433,8 @@ void App::swapToPlayer(const std::string& name) noexcept {
 	auto playerNameCheck = [&name](const std::unique_ptr<Player>& player) noexcept {
 		return name == player->name();
 	};
-	assert(name != getCurrentPlayer().name() 
-		&& "Can't swap to the current selected player, check for multiple players with this name");
-	assert(std::ranges::count_if(players, playerNameCheck) == 1
-		&& "There is no or multiple player with the name");
+	assert(name != getCurrentPlayer().name() && "Can't swap to the current selected player, check for multiple players with this name");
+	assert(std::ranges::count_if(players, playerNameCheck) == 1 && "There is no or multiple player with the name");
 	currentPlayer = std::ranges::find_if(players, playerNameCheck) - players.begin();
 }
 
@@ -383,9 +450,8 @@ void App::removePlayer(const std::string& name) noexcept {
 		return name == player->name();
 	};
 
-	assert(std::ranges::count_if(players, playerNameCheck) == 1 
-		&& "There is no or multiple player with the name");
-	
+	assert(std::ranges::count_if(players, playerNameCheck) == 1 && "There is no or multiple player with the name");
+
 	size_t player = std::ranges::find_if(players, playerNameCheck) - players.begin();
 	players.erase(players.begin() + player);
 
@@ -393,8 +459,7 @@ void App::removePlayer(const std::string& name) noexcept {
 		return;
 	if (currentPlayer >= player)
 		currentPlayer--;
-	assert((currentPlayer < players.size() || players.empty()) 
-		&& "The current player index is out of range");
+	assert((currentPlayer < players.size() || players.empty()) && "The current player index is out of range");
 }
 
 bool App::hasPlayer(const std::string& name) noexcept {

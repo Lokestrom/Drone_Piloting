@@ -5,7 +5,6 @@
 #include "rendering/Renderer.hpp"
 
 #include <optional>
-#include <filesystem>
 
 class Player {
 public:
@@ -17,9 +16,8 @@ public:
 	Player(Player&&) noexcept = default;
 	Player& operator=(Player&&) noexcept = delete;
 
-	[[nodiscard]]
-	bool SwapDrone(std::filesystem::path folderPath) noexcept;
-	void releaseDrone();
+	void replaceDrone(Drone&& replacement) noexcept;
+	void releaseDrone() noexcept;
 
 	[[nodiscard]]
 	vulkan::UniformBufferObject getUBO() const noexcept;

@@ -1,8 +1,9 @@
 #include "Player.hpp"
 
 #include "App.hpp"
-#include "console.hpp"
 #include "SettingNames.hpp"
+
+#include <utility>
 
 Player::Player(const std::string& name) noexcept
 	: _name(name)
@@ -21,44 +22,19 @@ Player::Player(const std::string& name) noexcept
 	_camera.updateViewMatrix();
 }
 
-bool Player::SwapDrone(std::filesystem::path folderPath) noexcept {
-	try {
-		if (!_drone.has_value()) {
-			_camera.setState(vulkan::Camera::State::Orbit);
-			_drone.emplace();
-			if (!_drone->load(folderPath)) {
-				_camera.setState(vulkan::Camera::State::FreeCAM);
-				_drone.reset();
-				return false;
-			}
-			return true;
-		}
-		API::DroneState state = _drone->getState();
-		_drone.reset();
-		_drone.emplace();
-		if (!_drone->load(folderPath, state)) {
-			_camera.setState(vulkan::Camera::State::FreeCAM);
-			_drone.reset();
-			return false;
-		}
-		return true;
-	}
-	catch (std::exception& e) {
-		_camera.setState(vulkan::Camera::State::FreeCAM);
-		_drone.reset();
-		Console::log(Console::Log::Type::error, std::string("Hit an exception when trying to load drone: ") + e.what());
-		return false;
-	}
+void Player::replaceDrone(Drone&& replacement) noexcept {
+	_drone.emplace(std::move(replacement));
+	_camera.setState(vulkan::Camera::State::Orbit);
 }
 
-void Player::releaseDrone() {
+void Player::releaseDrone() noexcept {
 	_camera.setState(vulkan::Camera::State::FreeCAM);
 	_drone.reset();
 }
 
 vulkan::UniformBufferObject Player::getUBO() const noexcept {
 	using vulkan::Camera;
-	if (!_drone.has_value()) {
+	if (!_drone) {
 		return {
 			.proj = _camera.getProjection(),
 			.view = _camera.getView(),
@@ -87,13 +63,13 @@ vulkan::UniformBufferObject Player::getUBO() const noexcept {
 
 void Player::update(bool active, bool updateCamera) {
 	using vulkan::Camera;
-	if (ImGui::IsKeyPressed(_freeCamera.get()))
+	if (ImGui::IsKeyPressed(_freeCamera.get())) [[unlikely]]
 		_camera.setState(Camera::State::FreeCAM);
-	if (ImGui::IsKeyPressed(_orbitCamera.get()))
+	if (ImGui::IsKeyPressed(_orbitCamera.get())) [[unlikely]]
 		_camera.setState(Camera::State::Orbit);
 
 	if (updateCamera)
 		_camera.update();
-	if (_drone.has_value())
+	if (_drone)
 		_drone->update(active);
 }
