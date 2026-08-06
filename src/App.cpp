@@ -414,8 +414,8 @@ void App::createSettings() {
 		"Physics updates are skipped when the frame delta time exceeds this value in seconds.");
 
 	auto& performanceSettings = settings.newCategory(settingNames::categories::performance);
-	performanceSettings.emplace<settings::ValueWithRange<int>>(settingNames::performance::mapLoadingThreads, 8,
-		settings::ValueWithRange<int>::setFunctionT(gui::slider), 1, 32,
+	performanceSettings.emplace<settings::ValueWithRange<int>>(settingNames::performance::mapLoadingThreads, 24,
+		settings::ValueWithRange<int>::setFunctionT(gui::slider), 1, 64,
 		"Number of worker threads used the next time a map is loaded.");
 
 	vulkan::createRenderingSettings();

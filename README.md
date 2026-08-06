@@ -42,8 +42,8 @@ Current plans for what i want to implement
 * Saving and loading
 
 ### Rendering:
-* Shadows
 * Dynamic lighting
+* Seperate it out into a rendering engine
 
 ### Other:
 * FreeCAD live link and editor

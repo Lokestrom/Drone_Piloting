@@ -63,6 +63,8 @@ inline constexpr char swapOnCreation[] = "Swap to player on creation";
 namespace rendering {
 inline constexpr char backgroundColor[] = "Background color";
 inline constexpr char dynamicObjectViewDistance[] = "Dynamic object view distance";
+inline constexpr char shadowsEnabled[] = "Enable shadows";
+inline constexpr char shadowDistance[] = "Shadow distance";
 inline constexpr char textureFullResolutionDistance[] = "Texture full resolution distance";
 inline constexpr char textureMediumResolutionDistance[] = "Texture medium resolution distance";
 inline constexpr char vectorLengthScale[] = "Debug vector length scale";
