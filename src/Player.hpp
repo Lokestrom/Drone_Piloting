@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Drone.hpp"
-#include "rendering/Camera.hpp"
-#include "rendering/Renderer.hpp"
+#include <renderer/Camera.hpp>
+#include <renderer/Renderer.hpp>
 
 #include <optional>
 

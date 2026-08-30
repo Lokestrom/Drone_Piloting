@@ -4,8 +4,8 @@
 #include "SettingNames.hpp"
 #include "console.hpp"
 #include "gui/settingsGui.hpp"
-#include "rendering/gameObject.hpp"
-#include "rendering/Runtime.hpp"
+#include <renderer/gameObject.hpp>
+#include <renderer/Runtime.hpp>
 
 #include <algorithm>
 #include <filesystem>

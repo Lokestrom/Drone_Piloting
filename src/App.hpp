@@ -1,9 +1,9 @@
 #pragma once
 
-#include "rendering/VulkanApp.hpp"
-#include "rendering/Renderer.hpp"
-#include "rendering/Camera.hpp"
-#include "rendering/Runtime.hpp"
+#include <renderer/VulkanApp.hpp>
+#include <renderer/Renderer.hpp>
+#include <renderer/Camera.hpp>
+#include <renderer/Runtime.hpp>
 #include "gui/guiApp.hpp"
 #include "Drone.hpp"
 #include "Map.hpp"

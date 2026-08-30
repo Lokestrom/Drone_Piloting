@@ -10,3 +10,6 @@
 [submodule "external/eigen"]
 	path = external/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "external/renderer"]
+	path = external/renderer
+	url = https://github.com/Lokestrom/Renderer.git

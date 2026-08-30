@@ -14,7 +14,6 @@ file(GLOB cppFiles
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
-add_subdirectory(rendering)
 add_subdirectory(windows)
 add_subdirectory(gui)
 add_subdirectory(structures)

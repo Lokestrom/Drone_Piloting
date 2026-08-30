@@ -4,7 +4,7 @@
 #include "../structures/fileExplorer.hpp"
 #include "../gui/settingsGui.hpp"
 #include "../gui/asyncWorkerGui.hpp"
-#include "../rendering/VulkanApp.hpp"
+#include <renderer/VulkanApp.hpp>
 #include "../SettingNames.hpp"
 
 #include <algorithm>

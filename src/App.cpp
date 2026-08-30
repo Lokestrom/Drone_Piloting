@@ -2,7 +2,7 @@
 
 #include "windows/windowSetup.hpp"
 #include "console.hpp"
-#include "rendering/helpers.hpp"
+#include <renderer/helpers.hpp>
 #include "benchmark.hpp"
 #include "gui/settingsGui.hpp"
 #include "gui/asyncWorkerGui.hpp"

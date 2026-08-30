@@ -10,6 +10,10 @@ file(GLOB cppFiles
 
 add_library(guiInterface ${cppFiles})
 
-target_link_libraries(guiInterface PUBLIC imgui external)
+target_link_libraries(guiInterface PUBLIC
+    imgui
+    external
+    RenderingEngine::RenderingEngine
+)
 
 target_include_directories(guiInterface PUBLIC ${CMAKE_SOURCE_DIR})

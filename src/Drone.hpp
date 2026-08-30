@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include "importJSONData.hpp"
 
-#include "rendering/gameObject.hpp"
+#include <renderer/gameObject.hpp>
 namespace API {
 #include "API/DroneAPI.h"
 }

@@ -3,7 +3,7 @@
 #include "../App.hpp"
 #include "../structures/fileExplorer.hpp"
 #include "../gui/asyncWorkerGui.hpp"
-#include "../rendering/VulkanApp.hpp"
+#include <renderer/VulkanApp.hpp>
 
 #include <fstream>
 #include <json.hpp>

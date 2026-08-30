@@ -14,7 +14,7 @@
 #include "App.hpp"
 #include "Settings.hpp"
 #include "gui/settingsGui.hpp"
-#include "rendering/helpers.hpp"
+#include <renderer/helpers.hpp>
 #include "console.hpp"
 
 using Axis2InputT = std::pair<ImGuiKey, ImGuiKey>;

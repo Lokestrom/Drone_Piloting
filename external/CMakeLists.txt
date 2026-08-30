@@ -11,6 +11,7 @@ add_subdirectory(glm)
 add_subdirectory(json)
 add_subdirectory(ImGui)
 add_subdirectory(eigen)
+add_subdirectory(renderer)
 
 target_link_libraries(external INTERFACE glfw glm nlohmann_json::nlohmann_json)
 

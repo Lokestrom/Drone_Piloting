@@ -10,6 +10,10 @@ file(GLOB cppFiles
 
 add_library(windows ${cppFiles})
 
-target_link_libraries(windows PUBLIC external guiInterface)
+target_link_libraries(windows PUBLIC
+    external
+    guiInterface
+    RenderingEngine::RenderingEngine
+)
 
 target_include_directories(windows PUBLIC ${CMAKE_SOURCE_DIR})

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rendering/gameObject.hpp"
+#include <renderer/gameObject.hpp>
 #include "importJSONData.hpp"
 
 #include <filesystem>
