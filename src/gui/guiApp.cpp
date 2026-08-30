@@ -111,22 +111,12 @@ void App::shutdown() {
 	windows.clear();
 }
 
-void App::render(ImGui_ImplVulkanH_Window* wd) {
-	
-	ImGui_ImplVulkanH_Frame* fd = &wd->Frames[wd->FrameIndex];
-	{
-		vk::RenderPassBeginInfo info;
-		info.renderPass = wd->RenderPass;
-		info.framebuffer = fd->Framebuffer;
-		info.renderArea.extent.width = wd->Width;
-		info.renderArea.extent.height = wd->Height;
-		info.clearValueCount = 0;
-		static_cast<vk::CommandBuffer>(fd->CommandBuffer).beginRenderPass(&info, vk::SubpassContents::eInline);
-	}
-
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), fd->CommandBuffer);
-
-	static_cast<vk::CommandBuffer>(fd->CommandBuffer).endRenderPass();
+void App::render() {
+	renderer::App::beginPresentationPass();
+	ImGui_ImplVulkan_RenderDrawData(
+		ImGui::GetDrawData(),
+		static_cast<VkCommandBuffer>(renderer::App::currentCommandBuffer()));
+	renderer::App::endPresentationPass();
 }
 void App::openWindow(const std::string& name) {
 	enabled = true;

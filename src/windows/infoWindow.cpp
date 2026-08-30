@@ -8,7 +8,10 @@ InfoWindow::InfoWindow() noexcept
 }
 
 void InfoWindow::_render() {
-	ImGui::InputFloat3("Camera position", &App::getCamera().getPositionRef().x);
+	glm::vec3 cameraPosition = App::getCamera().getPosition();
+	if (ImGui::InputFloat3("Camera position", &cameraPosition.x)) {
+		App::getCamera().setPosition(cameraPosition);
+	}
 	if (App::getDrone().has_value()) {
 		ImGui::InputFloat3("Drone position", &App::getDrone()->getPosition().x);
 		ImGui::InputFloat3("Drone velocity", &App::getDrone()->getVelocity().x);

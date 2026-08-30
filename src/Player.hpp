@@ -20,12 +20,12 @@ public:
 	void releaseDrone() noexcept;
 
 	[[nodiscard]]
-	vulkan::UniformBufferObject getUBO() const noexcept;
+	renderer::UniformBufferObject getUBO() const noexcept;
 
 	void update(bool active, bool updateCamera);
 
 	[[nodiscard]]
-	vulkan::Camera& getCamera() noexcept { return _camera; }
+	renderer::Camera& getCamera() noexcept { return _camera; }
 	[[nodiscard]]
 	std::optional<Drone>& getDrone() noexcept { return _drone; }
 
@@ -34,9 +34,22 @@ public:
 	void setName(const std::string& newName) { _name = newName; }
 
 private:
+	enum class CameraMode {
+		Free,
+		Orbit
+	};
+
+	void updateCameraProjection() noexcept;
+	void updateFreeCamera();
+	void updateOrbitCamera();
+
 	std::string _name;
 	std::optional<Drone> _drone;
-	vulkan::Camera _camera;
+	renderer::Camera _camera;
+	CameraMode _cameraMode = CameraMode::Free;
+	double _orbitRadius = 1.0;
+	double _orbitYaw = 0.0;
+	double _orbitPitch = 0.0;
 	settings::ValueHandle<ImGuiKey> _freeCamera;
 	settings::ValueHandle<ImGuiKey> _orbitCamera;
 };

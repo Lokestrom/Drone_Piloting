@@ -15,12 +15,12 @@ struct PoolState {
 	const Json& jsonData;
 	const std::filesystem::path& folderPath;
 	std::atomic<size_t> index;
-	std::vector<vulkan::ID>& sceneryIDs;
+	std::vector<renderer::ID>& sceneryIDs;
 
 	PoolState(const Json& jsonData,
 		const std::filesystem::path& folderPath,
 		size_t index,
-		std::vector<vulkan::ID>& sceneryIDs)
+		std::vector<renderer::ID>& sceneryIDs)
 		: jsonData(jsonData)
 		, folderPath(folderPath)
 		, index(index)
@@ -37,8 +37,8 @@ struct ThreadState {
 };
 
 namespace {
-void unloadPartialMap(std::vector<vulkan::ID>& sceneryIDs) noexcept {
-	vulkan::GameObjectContainer::removeWithInvalids(sceneryIDs);
+void unloadPartialMap(std::vector<renderer::ID>& sceneryIDs) noexcept {
+	renderer::GameObjectContainer::removeWithInvalids(sceneryIDs);
 	sceneryIDs.clear();
 }
 }
@@ -48,11 +48,11 @@ ThreadState startUpFunction(PoolState& poolState) {
 	ThreadState threadState;
 
 	vk::CommandPoolCreateInfo poolInfo{};
-	poolInfo.queueFamilyIndex = vulkan::App::queueFamily;
+	poolInfo.queueFamilyIndex = renderer::App::queueFamily;
 	poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer 
 		| vk::CommandPoolCreateFlagBits::eTransient;
 
-	threadState.commandPool = vulkan::App::device.createCommandPool(poolInfo);
+	threadState.commandPool = renderer::App::device.createCommandPool(poolInfo);
 	return threadState;
 };
 
@@ -61,8 +61,8 @@ bool updateFunction(PoolState& poolState, ThreadState& threadState) {
 	if (i >= poolState.jsonData["objects"].size())
 		return false;
 	auto& obj = poolState.jsonData["objects"][i];
-	poolState.sceneryIDs[i] = vulkan::GameObjectContainer::Add(vulkan::GameObject{
-		vulkan::ModelCache::loadModel(poolState.folderPath / obj["model"], *threadState.commandPool),
+	poolState.sceneryIDs[i] = renderer::GameObjectContainer::Add(renderer::GameObject{
+		renderer::ModelCache::loadModel(poolState.folderPath / obj["model"], *threadState.commandPool),
 		getVec3(obj["position"]),
 		glm::quat(), glm::vec3(1.0),
 		obj.contains("modelPosition") ? getVec3(obj["modelPosition"]) : glm::vec3(),
@@ -119,7 +119,7 @@ bool Map::load(std::filesystem::path folderPath) {
 	if (!verifyConfigFile(jsonData, folderPath))
 		return false;
 
-	std::vector<vulkan::ID> loadedSceneryIDs(jsonData["objects"].size());
+	std::vector<renderer::ID> loadedSceneryIDs(jsonData["objects"].size());
 
 	const int mapLoadingThreads = ::App::settings.get(settingNames::categories::performance)
 		.get<int>(settingNames::performance::mapLoadingThreads);
@@ -151,7 +151,7 @@ bool Map::load(std::filesystem::path folderPath) {
 
 	assert(!std::ranges::any_of(
 		loadedSceneryIDs,
-			   [](vulkan::ID id) noexcept { return id == 0; }) &&
+			   [](renderer::ID id) noexcept { return id == 0; }) &&
 		   "Cant have invalid id in the loaded scenery"
 	);
 
@@ -163,9 +163,9 @@ bool Map::load(std::filesystem::path folderPath) {
 void Map::unload() noexcept {
 	assert(std::ranges::none_of(
 		sceneryIDs,
-		[](vulkan::ID id) noexcept { return id == 0; }) &&
+		[](renderer::ID id) noexcept { return id == 0; }) &&
 		"A fully loaded map cannot contain invalid object IDs");
-	vulkan::GameObjectContainer::remove(sceneryIDs);
+	renderer::GameObjectContainer::remove(sceneryIDs);
 	sceneryIDs.clear();
 }
 

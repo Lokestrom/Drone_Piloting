@@ -89,7 +89,7 @@ void MapSelectWindow::selectFolder(const std::filesystem::path& mapFolder) {
 		.work = [
 			mapFolder,
 			workerGui]() mutable -> AsyncWorker::CompletionFn {
-			vulkan::App::waitIdle();
+			renderer::App::waitIdle();
 			workerGui->setPhase("Loading models and textures");
 
 			Map loadedMap;

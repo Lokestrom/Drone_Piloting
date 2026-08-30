@@ -131,7 +131,7 @@ void DroneSelectWindow::selectFolder(const std::filesystem::path& droneFolder) {
 			playerName,
 			previousState,
 			workerGui]() mutable -> AsyncWorker::CompletionFn {
-			vulkan::App::waitIdle();
+			renderer::App::waitIdle();
 			workerGui->setPhase("Loading models, configuration, and code");
 
 			Drone loadedDrone;

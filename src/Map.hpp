@@ -73,6 +73,6 @@ private:
 	[[nodiscard]]
 	bool verifyConfigFile(Json jsonData, std::filesystem::path folderPath) const;
 
-	std::vector<vulkan::ID> sceneryIDs;
+	std::vector<renderer::ID> sceneryIDs;
 	glm::vec3 lightSourcePos = glm::vec3(0,0,0);
 };

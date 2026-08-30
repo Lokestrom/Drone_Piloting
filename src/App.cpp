@@ -7,14 +7,23 @@
 #include "gui/settingsGui.hpp"
 #include "gui/asyncWorkerGui.hpp"
 #include "SettingNames.hpp"
+#include "rendererSetup.hpp"
+#include "debugObjects.hpp"
+#include "Input/InputEventHandler.hpp"
 
 #include <memory>
 #include <utility>
 
+#include <ImGui/imgui_impl_glfw.h>
+#include <ImGui/imgui_impl_vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
 
 static void glfwErrorCallback(int error, const char* description) {
 	Console::log(Console::Log::Type::error, std::string("GLFW error: Code: ") + std::to_string(error) + ", What: " + description);
+}
+
+static void glfwScrollCallback(GLFWwindow*, double, double yoffset) {
+	InputEventHandler::mouseScrollWheel = yoffset;
 }
 
 static void check_vk_result(VkResult err) {
@@ -43,15 +52,18 @@ void App::startup() {
 	const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 	for (uint32_t i = 0; i < glfwExtensionsCount; i++)
 		extensions.push_back(glfwExtensions[i]);
-	vulkan::App::startup(extensions);
+	renderer::App::startup(extensions);
 
 	VkSurfaceKHR surface;
-	VkResult err = glfwCreateWindowSurface(static_cast<VkInstance>(*vulkan::App::instance), window, nullptr, &surface);
+	VkResult err = glfwCreateWindowSurface(static_cast<VkInstance>(*renderer::App::instance), window, nullptr, &surface);
 	check_vk_result(err);
+	vk::raii::SurfaceKHR rendererSurface(renderer::App::instance, surface);
 
 	glfwGetFramebufferSize(window, &width, &height);
-	wd = &vulkan::App::mainWindowData;
-	vulkan::App::startupWindow(wd, static_cast<vk::SurfaceKHR>(surface), width, height);
+	renderer::App::startupWindow(
+		std::move(rendererSurface),
+		width,
+		height);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -73,23 +85,21 @@ void App::startup() {
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
 
+	glfwSetScrollCallback(window, glfwScrollCallback);
 	ImGui_ImplGlfw_InitForVulkan(window, true);
-	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = static_cast<VkInstance>(*vulkan::App::instance);
-	init_info.PhysicalDevice = static_cast<VkPhysicalDevice>(*vulkan::App::physicalDevice);
-	init_info.Device = static_cast<VkDevice>(*vulkan::App::device);
-	init_info.QueueFamily = vulkan::App::queueFamily;
-	init_info.Queue = static_cast<VkQueue>(*vulkan::App::queue);
-	init_info.PipelineCache = static_cast<VkPipelineCache>(*vulkan::App::pipelineCache);
-	init_info.DescriptorPool = static_cast<VkDescriptorPool>(*vulkan::App::descriptorPool);
-	init_info.RenderPass = wd->RenderPass;
-	init_info.Subpass = 0;
-	init_info.MinImageCount = vulkan::App::minImageCount;
-	init_info.ImageCount = wd->ImageCount;
-	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-	init_info.Allocator = nullptr;
-	init_info.CheckVkResultFn = check_vk_result;
-	ImGui_ImplVulkan_Init(&init_info);
+	constexpr std::array<vk::DescriptorPoolSize, 1> poolSizes{
+		vk::DescriptorPoolSize{
+			.type = vk::DescriptorType::eCombinedImageSampler,
+			.descriptorCount = IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE
+		}
+	};
+	vk::DescriptorPoolCreateInfo poolCreateInfo{};
+	poolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+	poolCreateInfo.maxSets = poolSizes.front().descriptorCount;
+	poolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	poolCreateInfo.pPoolSizes = poolSizes.data();
+	imguiDescriptorPool = renderer::App::device.createDescriptorPool(poolCreateInfo);
+	initializeImGuiVulkanBackend();
 
 	addPlayer("Default");
 	auto& player = getCurrentPlayer();
@@ -128,10 +138,30 @@ void App::startup() {
 	}
 }
 
+void App::initializeImGuiVulkanBackend() {
+	ImGui_ImplVulkan_InitInfo init_info = {
+		.Instance = static_cast<VkInstance>(*renderer::App::instance),
+		.PhysicalDevice = static_cast<VkPhysicalDevice>(*renderer::App::physicalDevice),
+		.Device = static_cast<VkDevice>(*renderer::App::device),
+		.QueueFamily = renderer::App::queueFamily,
+		.Queue = static_cast<VkQueue>(*renderer::App::queue),
+		.DescriptorPool = static_cast<VkDescriptorPool>(*imguiDescriptorPool),
+		.RenderPass = static_cast<VkRenderPass>(renderer::App::presentationRenderPass()),
+		.MinImageCount = renderer::App::FramesInFlight,
+		.ImageCount = renderer::App::imageCount(),
+		.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+		.PipelineCache = VK_NULL_HANDLE,
+		.Subpass = 0,
+		.Allocator = nullptr,
+		.CheckVkResultFn = check_vk_result,
+	};
+	ImGui_ImplVulkan_Init(&init_info);
+}
+
 void App::shutdown() {
 
 	try {
-		vulkan::App::waitIdle();
+		renderer::App::waitIdle();
 	}
 	catch (...) {
 		throw std::runtime_error("Failed to wait when shutting down");
@@ -141,19 +171,19 @@ void App::shutdown() {
 	map.reset();
 	for (auto& player : players)
 		player->releaseDrone();
+	destroyDebugObjects();
 
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	imguiDescriptorPool.clear();
 
 	gui::App::shutdown();
-	vulkan::App::shutdown();
+	renderer::App::shutdown();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }
-
-#include "Input/InputEventHandler.hpp"
 
 void App::updateMouseInput() {
 	glm::vec<2, double> mousePos;
@@ -189,7 +219,7 @@ void App::startInitialAsyncLoad(
 					mapPath = std::move(mapPath),
 					playerName,
 					workerGui]() mutable -> AsyncWorker::CompletionFn {
-			vulkan::App::waitIdle();
+			renderer::App::waitIdle();
 
 			workerGui->setPhase("Loading drone");
 			Drone loadedDrone;
@@ -325,8 +355,17 @@ void App::loop() {
 		updateMouseInput();
 
 		glfwGetFramebufferSize(window, &width, &height);
-		if (width > 0 && height > 0 && (vulkan::App::swapChainRebuild || vulkan::App::mainWindowData.Width != width || vulkan::App::mainWindowData.Height != height)) [[unlikely]] {
-			vulkan::App::resizeMainWindow(width, height);
+		const vk::Extent2D rendererExtent = renderer::App::extent();
+		if (width > 0 && height > 0 && (renderer::App::swapChainRebuild || rendererExtent.width != static_cast<uint32_t>(width) || rendererExtent.height != static_cast<uint32_t>(height))) [[unlikely]] {
+			renderer::App::waitIdle();
+			ImGui_ImplVulkan_Shutdown();
+			ImGui_ImplGlfw_Shutdown();
+			const bool formatChanged = renderer::App::resizeMainWindow(width, height);
+			if (formatChanged) {
+				Console::log(Console::Log::Type::message, "Rebuilding the UI renderer after a Vulkan surface-format change");
+			}
+			ImGui_ImplGlfw_InitForVulkan(window, true);
+			initializeImGuiVulkanBackend();
 		}
 		if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) [[unlikely]] {
 			ImGui_ImplGlfw_Sleep(10);
@@ -370,27 +409,35 @@ void App::loop() {
 
 void App::render() {
 	gui::App::generateWindows();
+	syncRenderingConfig();
+	const bool workerActive = hasActiveWorker();
+	if (!workerActive) {
+		syncDebugObjects();
+	}
 
 	ImDrawData* main_draw_data = ImGui::GetDrawData();
 	const bool mainMinimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
 	if (!mainMinimized) [[likely]] {
-		vulkan::App::beginFrame(wd);
+		if (!renderer::App::beginFrame()) {
+			return;
+		}
 
-		const bool workerActive = hasActiveWorker();
-		vulkan::UniformBufferObject UBO{};
+		renderer::UniformBufferObject UBO{};
 		if (!workerActive) [[likely]]
 			UBO = getUBO();
-		vulkan::App::render(UBO, !workerActive);
-		gui::App::render(wd);
+		renderer::App::render(UBO, !workerActive);
+		gui::App::render();
 
-		vulkan::App::endMainFrame(wd);
+		renderer::App::endMainFrame();
 	}
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-		vulkan::App::updatePlatformWindows();
+		auto queueLock = renderer::App::lockQueue();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
 	}
 	if (!mainMinimized) [[likely]] {
-		vulkan::App::endFrame(wd);
+		renderer::App::endFrame();
 	}
 }
 
@@ -418,7 +465,7 @@ void App::createSettings() {
 		settings::ValueWithRange<int>::setFunctionT(gui::slider), 1, 64,
 		"Number of worker threads used the next time a map is loaded.");
 
-	vulkan::createRenderingSettings();
+	createRenderingSettings();
 	createConsoleSettings();
 	createWindowsSettings();
 

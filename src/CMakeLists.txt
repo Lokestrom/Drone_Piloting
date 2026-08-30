@@ -17,7 +17,6 @@ file(GLOB cppFiles
 add_subdirectory(rendering)
 add_subdirectory(windows)
 add_subdirectory(gui)
-add_subdirectory(rendering/shaders)
 add_subdirectory(structures)
 
 if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -27,5 +26,5 @@ elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 add_executable(app ${cppFiles})
-target_link_libraries(app PUBLIC imgui external vulkanInterface guiInterface windows structures)
+target_link_libraries(app PUBLIC imgui external RenderingEngine::RenderingEngine guiInterface windows structures)
 target_include_directories(app PUBLIC ${CMAKE_SOURCE_DIR})

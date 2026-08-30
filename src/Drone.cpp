@@ -238,7 +238,7 @@ Drone& Drone::operator=(Drone&& other) noexcept {
 		return *this;
 
 	if (objectID != 0)
-		vulkan::GameObjectContainer::remove(objectID);
+		renderer::GameObjectContainer::remove(objectID);
 
 	objectID = std::exchange(other.objectID, 0);
 	_invInertia_B = other._invInertia_B;
@@ -305,12 +305,12 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 	_velocity = glm::vec3(0.0);
 	_angularMomentum = glm::vec3(0.0);
 
-	auto commandPool = vulkan::createCommandPool(
-		vulkan::App::queueFamily,
+	auto commandPool = renderer::createCommandPool(
+		renderer::App::queueFamily,
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
 			vk::CommandPoolCreateFlagBits::eTransient);
-	objectID = vulkan::GameObjectContainer::Add(vulkan::GameObject{
-		vulkan::ModelCache::loadModel(folderPath / jsonData["model"], *commandPool),
+	objectID = renderer::GameObjectContainer::Add(renderer::GameObject{
+		renderer::ModelCache::loadModel(folderPath / jsonData["model"], *commandPool),
 		glm::vec3(0, 0, 0),
 		glm::quat(1, 0, 0, 0),
 		glm::vec3(1.0),
@@ -401,11 +401,11 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 
 Drone::~Drone() noexcept {
 	if (objectID != 0)
-		vulkan::GameObjectContainer::remove(objectID);
+		renderer::GameObjectContainer::remove(objectID);
 }
 
 void Drone::update(bool active) {
-	auto& obj = vulkan::GameObjectContainer::get(objectID);
+	auto& obj = renderer::GameObjectContainer::get(objectID);
 
 	glm::mat3 R = glm::mat3_cast(getOrientation());
 	glm::mat3 invInertia = R * _invInertia_B * glm::transpose(R);
@@ -422,7 +422,7 @@ void Drone::update(bool active) {
 	if (_plugin.getTargetPosition) {
 		glm::vec3 targetPos;
 		_plugin.getTargetPosition(&targetPos.x);
-		::App::renderPoints.push_back({ targetPos, glm::vec4(1, 1, 0, 1) });
+		::App::renderPoints.push_back({ targetPos });
 	}
 
 	glm::vec3 forces = glm::rotate(glm::conjugate(getOrientation()), glm::vec3(0.0f, -9.81f, 0.0f) * _mass);
@@ -476,8 +476,8 @@ void Drone::update(bool active) {
 	}
 
 	// every render object refrencing the obj physics state must happen after the physics update
-	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f, glm::vec4(0, 0, 1, 1) });
-	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces), glm::vec4(0, 1, 0, 1) });
+	::App::renderVectors.push_back({ obj.position, (glm::length(_velocity) * _velocity) / 10.0f });
+	::App::renderVectors.push_back({ obj.position, glm::rotate(getOrientation(), forces) });
 	for (int i = 0; i < commands.count && commands.commands; ++i) {
 		const auto& command = commands.commands[i];
 		::App::renderVectors.push_back({ glm::rotate(getOrientation(), _engines[command.engineId].position) + obj.position,
@@ -486,23 +486,23 @@ void Drone::update(bool active) {
 }
 
 glm::vec3& Drone::getPosition() noexcept {
-	return vulkan::GameObjectContainer::get(objectID).position;
+	return renderer::GameObjectContainer::get(objectID).position;
 }
 
 const glm::vec3& Drone::getPosition() const noexcept {
-	return vulkan::GameObjectContainer::get(objectID).position;
+	return renderer::GameObjectContainer::get(objectID).position;
 }
 
 glm::quat& Drone::getOrientation() noexcept {
-	return vulkan::GameObjectContainer::get(objectID).orientation;
+	return renderer::GameObjectContainer::get(objectID).orientation;
 }
 
 const glm::quat& Drone::getOrientation() const noexcept {
-	return vulkan::GameObjectContainer::get(objectID).orientation;
+	return renderer::GameObjectContainer::get(objectID).orientation;
 }
 
-vulkan::GameObject& Drone::getObject() const noexcept {
-	return vulkan::GameObjectContainer::get(objectID);
+renderer::GameObject& Drone::getObject() const noexcept {
+	return renderer::GameObjectContainer::get(objectID);
 }
 
 API::DroneState Drone::getState() const noexcept {

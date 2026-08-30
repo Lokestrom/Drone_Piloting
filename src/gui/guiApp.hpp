@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <functional>
 
-struct ImGui_ImplVulkanH_Window;
 namespace gui {
 
 class App {
@@ -18,7 +17,7 @@ public:
 	static void generateWindows();
 	static void shutdown();
 
-	static void render(ImGui_ImplVulkanH_Window* wd);
+	static void render();
 
 	template<typename T>
 		requires std::is_base_of_v<ImGuiWindow, T>

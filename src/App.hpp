@@ -3,6 +3,7 @@
 #include "rendering/VulkanApp.hpp"
 #include "rendering/Renderer.hpp"
 #include "rendering/Camera.hpp"
+#include "rendering/Runtime.hpp"
 #include "gui/guiApp.hpp"
 #include "Drone.hpp"
 #include "Map.hpp"
@@ -33,12 +34,12 @@ public:
 	static GLFWwindow* getGLFWwindow() { return window; };
 
 	[[nodiscard]]
-	static vulkan::Camera& getCamera() noexcept { return getCurrentPlayer().getCamera(); }
+	static renderer::Camera& getCamera() noexcept { return getCurrentPlayer().getCamera(); }
 	[[nodiscard]]
 	static std::optional<Drone>& getDrone() noexcept { return getCurrentPlayer().getDrone(); }
 	[[nodiscard]]
-	static vulkan::UniformBufferObject getUBO() noexcept { 
-		vulkan::UniformBufferObject ubo = getCurrentPlayer().getUBO();
+	static renderer::UniformBufferObject getUBO() noexcept {
+		renderer::UniformBufferObject ubo = getCurrentPlayer().getUBO();
 		ubo.lightSource = map
 			? glm::vec4(map->getLightSourcePos(), 1.0f)
 			: glm::vec4(0.0f);
@@ -71,12 +72,10 @@ public:
 
 	struct RenderVector {
 		glm::vec3 position;
-		glm::vec3 dir;
-		glm::vec4 color = glm::vec4(1, 0, 0, 1);
+		glm::vec3 direction;
 	};
 	struct RenderPoint {
 		glm::vec3 position;
-		glm::vec4 color = glm::vec4(1, 0, 0, 1);
 	};
 
 	static inline settings::Settings settings;
@@ -92,9 +91,10 @@ private:
 		std::filesystem::path dronePath,
 		std::filesystem::path mapPath);
 	static void createSettings();
+	static void initializeImGuiVulkanBackend();
 
 private:
-	static inline ImGui_ImplVulkanH_Window* wd;
+	static inline vk::raii::DescriptorPool imguiDescriptorPool = nullptr;
 	static inline GLFWwindow* window;
 	static inline std::vector<std::unique_ptr<Player>> players;
 	static inline size_t currentPlayer = 0;

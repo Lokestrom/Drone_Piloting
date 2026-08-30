@@ -13,13 +13,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
-add_compile_definitions(
-  SHADER_OUTPUT_DIR="${CMAKE_SOURCE_DIR}/src/rendering/shaders/out/"
-  ASSET_DIR="${CMAKE_SOURCE_DIR}/Assets/"
-  BENCHMARK_DIR="${CMAKE_SOURCE_DIR}/benchmarks/"
-)
+find_package(Vulkan REQUIRED COMPONENTS glslc)
+set(RENDERING_ENGINE_USE_PROVIDED_VULKAN ON)
 
 add_subdirectory(external)
 add_subdirectory(src)
 add_subdirectory(src/API/Helpers)
 add_subdirectory(assets)
+
+target_compile_definitions(app PRIVATE
+  ASSET_DIR="${CMAKE_SOURCE_DIR}/assets/"
+  BENCHMARK_DIR="${CMAKE_SOURCE_DIR}/benchmarks/"
+)
+
+target_compile_definitions(windows PRIVATE
+  ASSET_DIR="${CMAKE_SOURCE_DIR}/assets/"
+)

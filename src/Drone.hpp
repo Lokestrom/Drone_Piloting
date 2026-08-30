@@ -93,12 +93,12 @@ private:
 	[[nodiscard]]
 	bool verifyPlugin(const SharedLib& pluginLib) const;
 
-	vulkan::GameObject& getObject() const noexcept;
+	renderer::GameObject& getObject() const noexcept;
 
 	void populateInput() noexcept;
 
 private:
-	vulkan::ID objectID = 0;
+	renderer::ID objectID = 0;
 
 	glm::mat3 _invInertia_B;
 
