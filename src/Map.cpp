@@ -62,7 +62,9 @@ bool updateFunction(PoolState& poolState, ThreadState& threadState) {
 		return false;
 	auto& obj = poolState.jsonData["objects"][i];
 	poolState.sceneryIDs[i] = renderer::GameObjectContainer::Add(renderer::GameObject{
-		renderer::ModelCache::loadModel(poolState.folderPath / obj["model"], *threadState.commandPool),
+		renderer::ModelCache::loadModel(
+			renderer::Model3D::loadFile(poolState.folderPath / obj["model"], *threadState.commandPool),
+			*threadState.commandPool),
 		getVec3(obj["position"]),
 		glm::quat(), glm::vec3(1.0),
 		obj.contains("modelPosition") ? getVec3(obj["modelPosition"]) : glm::vec3(),

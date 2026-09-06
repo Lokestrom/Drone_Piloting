@@ -24,7 +24,7 @@ std::vector<renderer::ID> pointObjects;
 [[nodiscard]] renderer::ID createDebugObject(const std::filesystem::path& modelPath) {
 	assert(std::filesystem::exists(modelPath) && "Model file does not exist");
 	return renderer::GameObjectContainer::Add(renderer::GameObject{
-		renderer::ModelCache::loadModel(modelPath),
+		renderer::ModelCache::loadModel(renderer::Model3D::loadFile(modelPath)),
 		glm::vec3(0.0f),
 		glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
 		glm::vec3(0.0f)

@@ -310,7 +310,9 @@ bool Drone::_load(const std::filesystem::path& folderPath) {
 		vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
 			vk::CommandPoolCreateFlagBits::eTransient);
 	objectID = renderer::GameObjectContainer::Add(renderer::GameObject{
-		renderer::ModelCache::loadModel(folderPath / jsonData["model"], *commandPool),
+		renderer::ModelCache::loadModel(
+			renderer::Model3D::loadFile(folderPath / jsonData["model"], *commandPool),
+			*commandPool),
 		glm::vec3(0, 0, 0),
 		glm::quat(1, 0, 0, 0),
 		glm::vec3(1.0),
